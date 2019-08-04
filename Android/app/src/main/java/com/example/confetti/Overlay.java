@@ -33,6 +33,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static java.lang.Thread.sleep;
 
@@ -253,8 +255,14 @@ public class Overlay extends Service {
 
                 // TODO Auto-generated method stub
                 if (questionText != null && !questionText.equals("") && answerText != null && !answerText.equals("") && questionText.contains("?")) {
-                    Log.d(TAG, "Confetti question: " + questionText.trim());
-                    Log.d(TAG, "Answers: " + answerText.trim());
+                    String[] answers = answerText.split("\n");
+                    if (answers.length == 3) {
+                        String answerNo1 = answers[0].trim();
+                        String answerNo2 = answers[1].trim();
+                        String answerNo3 = answers[2].trim();
+                        Log.d(TAG, "Question: " + questionText.replaceAll("[^\\p{L}\\s]", ""));
+                        Log.d(TAG, "Answers: " + answerNo1 + " " + answerNo2 + " " + answerNo3);
+                    }
                 }
             }
         });
