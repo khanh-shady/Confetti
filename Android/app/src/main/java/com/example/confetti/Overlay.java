@@ -67,7 +67,7 @@ public class Overlay extends Service {
     private int mDensityDpi;
     private WindowManager windowManager;
 
-    private final String HOST = "http://192.168.1.15:9000/question";
+    private final String HOST = "https://confetti-server.herokuapp.com/question";
 
     //OCR
     private TessOCR mTessOCR;
