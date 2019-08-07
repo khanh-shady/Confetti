@@ -3,12 +3,7 @@ package com.example.confetti;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Paint;
 import android.graphics.PixelFormat;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -19,6 +14,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.telecom.Call;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -26,15 +22,25 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import static java.lang.Thread.sleep;
 
@@ -42,6 +48,8 @@ public class Overlay extends Service {
 
     private WindowManager mWindowManager;
     private View mOverlay;
+    private TextView questionTV;
+    public static TextView resultTV;
 
     private static final String TAG = Overlay.class.getName();
     private static String STORE_DIRECTORY;
@@ -58,6 +66,8 @@ public class Overlay extends Service {
     private int mDisplayHeight;
     private int mDensityDpi;
     private WindowManager windowManager;
+
+    private final String HOST = "http://192.168.1.15:9000/question";
 
     //OCR
     private TessOCR mTessOCR;
@@ -99,6 +109,8 @@ public class Overlay extends Service {
         params.x = 0;
         params.y = 100;
 
+        questionTV = mOverlay.findViewById(R.id.question_and_answers_tv);
+        resultTV = mOverlay.findViewById(R.id.result_tv);
         //Set the close button.
         ImageView closeButton = (ImageView) mOverlay.findViewById(R.id.close_btn);
         closeButton.setOnClickListener(new View.OnClickListener() {
@@ -228,7 +240,7 @@ public class Overlay extends Service {
                     IMAGES_PRODUCED++;
 
                     doOCR(bitmap, width, mDisplayHeight);
-                    sleep(5000);
+                    sleep(3000);
                 }
 
             } catch (Exception e) {
@@ -257,11 +269,14 @@ public class Overlay extends Service {
                 if (questionText != null && !questionText.equals("") && answerText != null && !answerText.equals("") && questionText.contains("?")) {
                     String[] answers = answerText.split("\n");
                     if (answers.length == 3) {
-                        String answerNo1 = answers[0].trim();
-                        String answerNo2 = answers[1].trim();
-                        String answerNo3 = answers[2].trim();
-                        Log.d(TAG, "Question: " + questionText.replaceAll("[^\\p{L}\\s]", ""));
+                        String answerNo1 = answers[0].trim().replaceAll("[^\\p{L}\\s]", "");
+                        String answerNo2 = answers[1].trim().replaceAll("[^\\p{L}\\s]", "");
+                        String answerNo3 = answers[2].trim().replaceAll("[^\\p{L}\\s]", "");
+                        String q = questionText.replaceAll("[^\\p{L}\\s]", "");
+                        Log.d(TAG, "Question: " + q);
                         Log.d(TAG, "Answers: " + answerNo1 + " " + answerNo2 + " " + answerNo3);
+                        questionTV.setText("Question: " + q + "\n Answer1: " + answerNo1 + "  Answer2: " + answerNo2 + "  Answer3: " + answerNo3);
+                        new CallAPI().execute(HOST, q, answerNo1, answerNo2, answerNo3);
                     }
                 }
             }
