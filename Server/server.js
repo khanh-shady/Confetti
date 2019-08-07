@@ -1,5 +1,6 @@
 const express = require('express');
 const request = require('request');
+const cheerio = require('cheerio');
 const bodyParser = require('body-parser');
 
 // Create a new instance of express
@@ -9,28 +10,70 @@ const port = 9000;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+const SEARCH_RESULT_SELECTOR = 'div.g';
+const RIGHT_SNIPPET_SELECTOR = 'div.ifM9O';
+const TOP_SNIPPET_SELECTOR = 'div.ifM9O';
+const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
+const PARENT_ELEMENT_SELECTOR = '#main';
+
+const options = {
+  url: encodeURI('https://google.com/search?q=sinh+học'),
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
+  },
+  encoding: 'utf8'
+};
+let score1, score2, score3;
+let answerRegex1, answerRegex2, answerRegex3;
+
 app.post('/question', function (req, res) {
-  // console.log(req.body.question);
-  // const question = req.body.question;
-  // const answer1 = req.body.answer1;
-  // const answer2 = req.body.answer2;
-  // const answer3 = req.body.answer3;
-  // let tokenizedQuestion = tokenzieQuestion(question);
-  // makeQuery(tokenizedQuestion, answer1, answer2, answer3).then((result) => {
-  //   res.send(result);
-  // });
-  var options = {
-    url: `http://www.google.com/search?q=${encodeURI('kẹo+dừa+là+đặc+sản+tỉnh')}`,
-    headers: {
-      'User-Agent': 'Mozilla/5.0'
-    },
-    encoding: 'utf8'
-  };
-  request(options, function (error, response, body) {
-    console.log('error:', error); // Print the error if one occurred
-    console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-    console.log('body:', body); // Print the HTML for the Google homepage.
-    res.end(body);
+  score1 = score2 = score3 = 0;
+  const { question, answer1, answer2, answer3 } = req.body;
+  answerRegex1 = new RegExp(answer1, 'g');
+  answerRegex2 = new RegExp(answer2, 'g');
+  answerRegex3 = new RegExp(answer3, 'g');
+  console.log(question);
+  let tokenizedQuestion = tokenizeQuestion(question);
+  
+  /*
+    Make 4 queries
+    1. Only the question
+    2. Question with answer 1
+    3. Question with answer 2
+    4. Question with answer 3
+  */
+  const query1 = makeQuery(tokenizedQuestion);
+  const query2 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer1);
+  const query3 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer2);
+  const query4 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer3);
+
+  /*
+    How to calculate ratings
+      Each time an answer appears in top snippet, that answer scores 15 points
+      Each time an answer appears in right snippet, that answer scores 10 points
+      Each time an answer appears in search results, that answer scores 1 points
+      Each time an answer appears in news results, that answer scores 5 points
+  */
+  Promise.all([
+    makeRequest(query1),
+    makeRequest(query2),
+    makeRequest(query3),
+    makeRequest(query4)
+  ]).then(() => {
+    /*
+      One small trick for categorizing questions
+        With questions containing "KHÔNG", return the smallest rating
+    */
+    const max = Math.max(score1, score2, score3);
+    const min = Math.min(score1, score2, score3);
+    let result;
+    if (question.indexOf('KHÔNG') < 0) {
+      score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3; 
+      res.end(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
+    } else {
+      score1 === min ? result = answer1 : score2 === min ? result = answer2 : result = answer3; 
+      res.end(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
+    }
   });
 })
 
@@ -39,18 +82,50 @@ app.listen(port, function (err) {
   if (err) {
     throw err;
   }
-
   console.log(`Server started on port ${port}`);
-})
+});
 
-function tokenzieQuestion(question) {
-
+function tokenizeQuestion(question) {
+  let q = question;
+  if (question.indexOf('đâu KHÔNG phải là một') >= 0) {
+    q = q.replace('đâu KHÔNG phải là một', '');
+  }
+  if (question.indexOf('đâu KHÔNG phải là') >= 0) {
+    q = q.replace('đâu KHÔNG phải là', '');
+  }
+  if (question.indexOf('KHÔNG') >= 0) {
+    q = q.replace('KHÔNG', '');
+  }
+  console.log(q);
+  return q;
 }
 
-function makeQuery(question, answer1, answer2, answer3) {
-
+function makeQuery(string) {
+  return string.split(' ').join('+');
 }
 
-function parseHTML() {
+function makeRequest(query) {
+  return new Promise((resolve, reject) => {
+    options.url = encodeURI(`https://google.com/search?q=${query}`);
+    request(options, function (error, response, body) {
+      if (error) {
+        console.log(error);
+        reject(error);
+      }
+      const $ = cheerio.load(body);
+      const searchResults = $(SEARCH_RESULT_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      const rightSnippet = $(RIGHT_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      const topSnippet = $(TOP_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      const newsSnippet = $(NEWS_SNIPPET_SELECOTR, PARENT_ELEMENT_SELECTOR).text();
+      score1 = score1 + calculateRating(searchResults, answerRegex1) + calculateRating(rightSnippet, answerRegex1) * 10 + calculateRating(topSnippet, answerRegex1) * 15 + calculateRating(newsSnippet, answerRegex1) * 5;
+      score2 = score2 + calculateRating(searchResults, answerRegex2) + calculateRating(rightSnippet, answerRegex2) * 10 + calculateRating(topSnippet, answerRegex2) * 15 + calculateRating(newsSnippet, answerRegex2) * 5;
+      score3 = score3 + calculateRating(searchResults, answerRegex3) + calculateRating(rightSnippet, answerRegex3) * 10 + calculateRating(topSnippet, answerRegex3) * 15 + calculateRating(newsSnippet, answerRegex3) * 5;
+      resolve(true);
+    });
+  });
+}
 
+function calculateRating(search, regex) {
+  let matches = search.match(regex);
+  return matches ? matches.length : 0;
 }
