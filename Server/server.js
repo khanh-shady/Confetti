@@ -17,7 +17,6 @@ const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
 
 const options = {
-  url: encodeURI('https://google.com/search?q=sinh+học'),
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
   },
@@ -32,7 +31,10 @@ app.post('/question', function (req, res) {
   answerRegex1 = new RegExp(answer1, 'g');
   answerRegex2 = new RegExp(answer2, 'g');
   answerRegex3 = new RegExp(answer3, 'g');
-  console.log(question);
+  console.log("Question: ", question);
+  console.log("Answer1: ", answer1);
+  console.log("Answer2: ", answer2);
+  console.log("Answer3: ", answer3);
   let tokenizedQuestion = tokenizeQuestion(question);
   
   /*
@@ -70,9 +72,11 @@ app.post('/question', function (req, res) {
     if (question.indexOf('KHÔNG') < 0) {
       score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3; 
       res.end(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
+      console.log(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
     } else {
       score1 === min ? result = answer1 : score2 === min ? result = answer2 : result = answer3; 
       res.end(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
+      console.log(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
     }
   });
 })
