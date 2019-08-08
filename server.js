@@ -69,7 +69,7 @@ app.post('/question', function (req, res) {
     const max = Math.max(score1, score2, score3);
     const min = Math.min(score1, score2, score3);
     let result;
-    if (question.indexOf('KHÔNG') < 0) {
+    if (question.indexOf('KHÔNG') < 0 && question.indexOf('CHƯA') < 0) {
       score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3; 
       res.end(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
       console.log(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
