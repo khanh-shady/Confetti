@@ -72,6 +72,8 @@ public class Overlay extends Service {
 
     private final String HOST = "https://confetti-server.herokuapp.com/question";
 
+    private boolean isDoingOCR = false;
+
     //OCR
     private TessOCR mTessOCR;
 
@@ -243,7 +245,6 @@ public class Overlay extends Service {
                     IMAGES_PRODUCED++;
 
                     doOCR(bitmap, width, mDisplayHeight);
-                    sleep(2000);
                 }
 
             } catch (Exception e) {
@@ -263,18 +264,23 @@ public class Overlay extends Service {
     private void doOCR (final Bitmap bitmap, int width, int height) {
         final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 200);
         final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 330, height - 1750);
+        if (isDoingOCR) {
+            return;
+        }
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
+                isDoingOCR = true;
                 final String questionText = mTessOCR.getOCRResult(question);
                 final String answerText = mTessOCR.getOCRResult(answer);
 
                 // TODO Auto-generated method stub
                 if (questionText != null && !questionText.equals("") && answerText != null && !answerText.equals("") && questionText.contains("?")) {
+                    System.out.println("Answer: " + answerText);
                     String[] answers = answerText.split("\n");
                     if (answers.length == 3) {
-                        String answerNo1 = answers[0].trim().replaceAll("[^\\p{L}\\s]", "");
-                        String answerNo2 = answers[1].trim().replaceAll("[^\\p{L}\\s]", "");
-                        String answerNo3 = answers[2].trim().replaceAll("[^\\p{L}\\s]", "");
+                        String answerNo1 = answers[0].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
+                        String answerNo2 = answers[1].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
+                        String answerNo3 = answers[2].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
                         String q = questionText.replaceAll("[^\\p{L}\\s]", "");
                         Log.d(TAG, "Question: " + q);
                         Log.d(TAG, "Answers: " + answerNo1 + " " + answerNo2 + " " + answerNo3);
@@ -282,6 +288,7 @@ public class Overlay extends Service {
                         new CallAPI().execute(HOST, q, answerNo1, answerNo2, answerNo3);
                     }
                 }
+                isDoingOCR = false;
             }
         });
     }
