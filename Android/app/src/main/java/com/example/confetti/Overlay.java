@@ -11,6 +11,7 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -29,6 +30,8 @@ import androidx.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -240,7 +243,7 @@ public class Overlay extends Service {
                     IMAGES_PRODUCED++;
 
                     doOCR(bitmap, width, mDisplayHeight);
-                    sleep(3000);
+                    sleep(2000);
                 }
 
             } catch (Exception e) {
@@ -258,8 +261,8 @@ public class Overlay extends Service {
     }
 
     private void doOCR (final Bitmap bitmap, int width, int height) {
-        final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 250);
-        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 300, height - 1600);
+        final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 200);
+        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 330, height - 1750);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
                 final String questionText = mTessOCR.getOCRResult(question);

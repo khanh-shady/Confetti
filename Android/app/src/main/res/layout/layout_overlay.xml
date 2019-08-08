@@ -21,7 +21,7 @@
         android:id="@+id/close_btn"
         android:layout_width="26dp"
         android:layout_height="26dp"
-        android:layout_marginStart="350dp"
+        android:layout_marginStart="50dp"
         android:src="@color/colorPrimary"
         tools:ignore="ContentDescription"/>
 
