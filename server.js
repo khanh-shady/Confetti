@@ -118,9 +118,21 @@ function makeRequest(query) {
       }
       const $ = cheerio.load(body);
       const searchResults = $(SEARCH_RESULT_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      console.log(searchResults);
+      console.log();
+      console.log();
       const rightSnippet = $(RIGHT_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      console.log(rightSnippet);
+      console.log();
+      console.log();
       const topSnippet = $(TOP_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
+      console.log(topSnippet);
+      console.log();
+      console.log();
       const newsSnippet = $(NEWS_SNIPPET_SELECOTR, PARENT_ELEMENT_SELECTOR).text();
+      console.log(newsSnippet);
+      console.log();
+      console.log();
       score1 = score1 + calculateRating(searchResults, answerRegex1) + calculateRating(rightSnippet, answerRegex1) * 10 + calculateRating(topSnippet, answerRegex1) * 15 + calculateRating(newsSnippet, answerRegex1) * 5;
       score2 = score2 + calculateRating(searchResults, answerRegex2) + calculateRating(rightSnippet, answerRegex2) * 10 + calculateRating(topSnippet, answerRegex2) * 15 + calculateRating(newsSnippet, answerRegex2) * 5;
       score3 = score3 + calculateRating(searchResults, answerRegex3) + calculateRating(rightSnippet, answerRegex3) * 10 + calculateRating(topSnippet, answerRegex3) * 15 + calculateRating(newsSnippet, answerRegex3) * 5;
