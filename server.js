@@ -117,6 +117,7 @@ function makeRequest(query) {
         reject(error);
       }
       const $ = cheerio.load(body);
+      console.log('================ GOOGLE SEARCH RESULTS: ', body);
       const searchResults = $(SEARCH_RESULT_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
       const rightSnippet = $(RIGHT_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
       const topSnippet = $(TOP_SNIPPET_SELECTOR, PARENT_ELEMENT_SELECTOR).text();
