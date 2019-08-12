@@ -73,6 +73,7 @@ public class Overlay extends Service {
     private final String HOST = "https://confetti-server.herokuapp.com/question";
 
     private boolean isDoingOCR = false;
+    private boolean isOCREnabled = false;
 
     //OCR
     private TessOCR mTessOCR;
@@ -123,6 +124,14 @@ public class Overlay extends Service {
             public void onClick(View v) {
                 //close the service and remove the chat head from the window
                 stopSelf();
+            }
+        });
+        ImageView screenshotButton = (ImageView) mOverlay.findViewById(R.id.screenshot_btn);
+        screenshotButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //enable do OCR
+                isOCREnabled = true;
             }
         });
         //Add the view to the window
@@ -244,7 +253,9 @@ public class Overlay extends Service {
 
                     IMAGES_PRODUCED++;
 
-                    doOCR(bitmap, width, mDisplayHeight);
+                    if (isOCREnabled) {
+                        doOCR(bitmap, width, mDisplayHeight);
+                    }
                 }
 
             } catch (Exception e) {
@@ -262,11 +273,11 @@ public class Overlay extends Service {
     }
 
     private void doOCR (final Bitmap bitmap, int width, int height) {
-        final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 200);
-        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 330, height - 1750);
         if (isDoingOCR) {
             return;
         }
+        final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 200);
+        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 330, height - 1750);
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
                 isDoingOCR = true;
@@ -289,6 +300,7 @@ public class Overlay extends Service {
                     }
                 }
                 isDoingOCR = false;
+                isOCREnabled = false;
             }
         });
     }

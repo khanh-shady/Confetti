@@ -18,10 +18,19 @@
 
     <!--Close button-->
     <ImageView
+        android:id="@+id/screenshot_btn"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="50dp"
+        android:src="@color/colorPrimaryDark"
+        tools:ignore="ContentDescription"/>
+
+    <!--Close button-->
+    <ImageView
         android:id="@+id/close_btn"
         android:layout_width="26dp"
         android:layout_height="26dp"
-        android:layout_marginStart="50dp"
+        android:layout_marginStart="100dp"
         android:src="@color/colorPrimary"
         tools:ignore="ContentDescription"/>
 
