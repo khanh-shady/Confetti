@@ -11,11 +11,9 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.telecom.Call;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -27,25 +25,8 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.net.ssl.HttpsURLConnection;
-
-import static java.lang.Thread.sleep;
 
 public class Overlay extends Service {
 
@@ -70,7 +51,7 @@ public class Overlay extends Service {
     private int mDensityDpi;
     private WindowManager windowManager;
 
-    private final String HOST = "https://confetti-server.herokuapp.com/question";
+    private final String HOST = "https://asia-east2-confetti-faca0.cloudfunctions.net/question";
 
     private boolean isDoingOCR = false;
     private boolean isOCREnabled = false;
