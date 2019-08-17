@@ -1,13 +1,17 @@
-Installation:
-# cd functions
-# npm install
+# Installation:
+> cd functions
 
-1. Run on local computer
-# npm run start 
+> npm install
+
+# 1. Run on local computer
+> npm run start 
+
 and make POST request to localhost:5000/question
 
-2. To deploy it to Firebase
-# firebase deploy --only functions
+# 2. To deploy it to Firebase
+> firebase login
+
+> firebase deploy --only functions
 
 All scripts related to server have to be made inside ./functions folder
 
