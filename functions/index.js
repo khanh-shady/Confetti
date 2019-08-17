@@ -1,3 +1,5 @@
+const functions = require('firebase-functions');
+
 const express = require('express');
 const request = require('request');
 const cheerio = require('cheerio');
@@ -25,7 +27,7 @@ const options = {
 let score1, score2, score3;
 let answerRegex1, answerRegex2, answerRegex3;
 
-app.post('/question', function (req, res) {
+app.post('', (req, res) => {
   score1 = score2 = score3 = 0;
   const { question, answer1, answer2, answer3 } = req.body;
   answerRegex1 = new RegExp(answer1.toLowerCase(), 'g');
@@ -78,11 +80,14 @@ app.post('/question', function (req, res) {
       res.end(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
       console.log(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
     }
+    return null;
+  }).catch(e => {
+    console.error(e);
   });
 })
 
 // Tell our app to listen on port 3000
-app.listen(port, function (err) {
+app.listen(port, (err) => {
   if (err) {
     throw err;
   }
@@ -111,7 +116,7 @@ function makeQuery(string) {
 function makeRequest(query) {
   return new Promise((resolve, reject) => {
     options.url = encodeURI(`https://google.com/search?q=${query}`);
-    request(options, function (error, response, body) {
+    request(options, (error, response, body) => {
       if (error) {
         console.log(error);
         reject(error);
@@ -135,3 +140,6 @@ function calculateRating(search, regex) {
   let matches = search.match(regex);
   return matches ? matches.length : 0;
 }
+
+// Expose Express API as a single Cloud Function:
+exports.question = functions.region('asia-east2').https.onRequest(app);
