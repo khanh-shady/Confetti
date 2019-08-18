@@ -1,10 +1,7 @@
 package com.example.confetti;
 
 import android.os.AsyncTask;
-import android.util.Log;
-import android.widget.TextView;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -18,7 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CallAPI extends AsyncTask<String, String, String> {
-
     public CallAPI(){
         //set context variables if required
     }
@@ -68,6 +64,13 @@ public class CallAPI extends AsyncTask<String, String, String> {
     }
 
     protected void onPostExecute(String result) {
+        if (result.contains("Đáp án A")) {
+            Overlay.posY = MainActivity.posA;
+        } else if (result.contains("Đáp án B")) {
+            Overlay.posY = MainActivity.posB;
+        } else {
+            Overlay.posY = MainActivity.posC;
+        }
         Overlay.resultTV.setText(result);
     }
 

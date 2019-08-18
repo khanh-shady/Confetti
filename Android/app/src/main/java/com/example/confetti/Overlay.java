@@ -1,8 +1,10 @@
 package com.example.confetti;
 
-import android.app.Service;
+import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -12,23 +14,23 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.nio.ByteBuffer;
 
-public class Overlay extends Service {
+public class Overlay extends AccessibilityService {
 
     private WindowManager mWindowManager;
     private View mOverlay;
@@ -61,23 +63,29 @@ public class Overlay extends Service {
 
     private static final String SCREENCAP_NAME = "screencap";
 
-    @Nullable
+    public static int posX = 100, posY = 0;
+
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+    protected void onServiceConnected() {
+        initRecorder();
     }
 
-    public Overlay() {
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+
+    }
+
+    @Override
+    public void onInterrupt() {
+
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        //Inflate the chat head layout we created
         mOverlay = LayoutInflater.from(this).inflate(R.layout.layout_overlay, null);
 
         mTessOCR = new TessOCR (this, "vie");
-        //Add the view to the window.
         int LAYOUT_FLAG;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
@@ -92,12 +100,28 @@ public class Overlay extends Service {
                 PixelFormat.TRANSLUCENT);
 
         //Specify the chat head position
-        params.gravity = Gravity.TOP | Gravity.LEFT;        //Initially view will be added to top-left corner
+        params.gravity = Gravity.TOP | Gravity.LEFT;
         params.x = 0;
         params.y = 100;
 
         questionTV = mOverlay.findViewById(R.id.question_and_answers_tv);
         resultTV = mOverlay.findViewById(R.id.result_tv);
+        resultTV.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                dispatchClick(posX, posY);
+            }
+        });
         //Set the close button.
         ImageView closeButton = (ImageView) mOverlay.findViewById(R.id.close_btn);
         closeButton.setOnClickListener(new View.OnClickListener() {
@@ -160,7 +184,6 @@ public class Overlay extends Service {
                 return;
             }
             File externalFilesDir = getExternalFilesDir(null);
-            System.out.println(externalFilesDir);
             if (externalFilesDir != null) {
                 STORE_DIRECTORY = externalFilesDir.getAbsolutePath() + "/screenshots/";
                 File storeDirectory = new File(STORE_DIRECTORY);
@@ -267,15 +290,13 @@ public class Overlay extends Service {
 
                 // TODO Auto-generated method stub
                 if (questionText != null && !questionText.equals("") && answerText != null && !answerText.equals("") && questionText.contains("?")) {
-                    System.out.println("Answer: " + answerText);
                     String[] answers = answerText.split("\n");
                     if (answers.length == 3) {
                         String answerNo1 = answers[0].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
                         String answerNo2 = answers[1].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
                         String answerNo3 = answers[2].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
                         String q = questionText.replaceAll("[^\\p{L}\\s]", "");
-                        Log.d(TAG, "Question: " + q);
-                        Log.d(TAG, "Answers: " + answerNo1 + " " + answerNo2 + " " + answerNo3);
+                        Log.d(TAG, questionText);
                         questionTV.setText("Question: " + q + "\n Answer1: " + answerNo1 + "  Answer2: " + answerNo2 + "  Answer3: " + answerNo3);
                         new CallAPI().execute(HOST, q, answerNo1, answerNo2, answerNo3);
                     }
@@ -284,5 +305,20 @@ public class Overlay extends Service {
                 isOCREnabled = false;
             }
         });
+    }
+
+    private GestureDescription createClick(float x, float y) {
+        // for a single tap a duration of 1 ms is enough
+        final int DURATION = 1;
+        Path clickPath = new Path();
+        clickPath.moveTo(x, y);
+        GestureDescription.StrokeDescription clickStroke = new GestureDescription.StrokeDescription(clickPath, 0, DURATION);
+        GestureDescription.Builder clickBuilder = new GestureDescription.Builder();
+        clickBuilder.addStroke(clickStroke);
+        return clickBuilder.build();
+    }
+
+    public void dispatchClick(int x, int y) {
+        dispatchGesture(createClick(x, y), null, null);
     }
 }

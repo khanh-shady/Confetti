@@ -7,11 +7,10 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <!--Profile image for the chat head.-->
     <ImageView
         android:id="@+id/chat_head_profile_iv"
-        android:layout_width="500dp"
-        android:layout_height="150dp"
+        android:layout_width="400dp"
+        android:layout_height="200dp"
         android:layout_marginTop="8dp"
         android:src="@color/colorAccent"
         tools:ignore="ContentDescription"/>
@@ -30,7 +29,7 @@
         android:id="@+id/close_btn"
         android:layout_width="26dp"
         android:layout_height="26dp"
-        android:layout_marginStart="100dp"
+        android:layout_marginStart="150dp"
         android:src="@color/colorPrimary"
         tools:ignore="ContentDescription"/>
 
@@ -43,7 +42,7 @@
 
     <TextView
         android:textSize="15sp"
-        android:layout_marginTop="100dp"
+        android:layout_marginTop="150dp"
         android:id="@+id/result_tv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
