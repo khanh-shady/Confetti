@@ -70,15 +70,17 @@ app.post('', (req, res) => {
     */
     const max = Math.max(score1, score2, score3);
     const min = Math.min(score1, score2, score3);
-    let result;
+    let result, resultInLetter;
     if (question.indexOf('KHÔNG') < 0 && question.indexOf('CHƯA') < 0) {
-      score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3; 
-      res.end(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
-      console.log(`${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
+      score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3;
+      score1 === max ? resultInLetter = "Đáp án A" : score2 === max ? resultInLetter = "Đáp án B" : resultInLetter = "Đáp án C";
+      res.end(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
+      console.log(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
     } else {
-      score1 === min ? result = answer1 : score2 === min ? result = answer2 : result = answer3; 
-      res.end(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
-      console.log(`${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
+      score1 === min ? result = answer1 : score2 === min ? result = answer2 : result = answer3;
+      score1 === min ? resultInLetter = "Đáp án A" : score2 === min ? resultInLetter = "Đáp án B" : resultInLetter = "Đáp án C";
+      res.end(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
+      console.log(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
     }
     return null;
   }).catch(e => {
