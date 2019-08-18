@@ -292,13 +292,11 @@ public class Overlay extends AccessibilityService {
                 if (questionText != null && !questionText.equals("") && answerText != null && !answerText.equals("") && questionText.contains("?")) {
                     String[] answers = answerText.split("\n");
                     if (answers.length == 3) {
-                        String answerNo1 = answers[0].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
-                        String answerNo2 = answers[1].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
-                        String answerNo3 = answers[2].trim().replaceAll("[^\\p{L}|\\p{N}\\s]", "");
-                        String q = questionText.replaceAll("[^\\p{L}\\s]", "");
-                        Log.d(TAG, questionText);
-                        questionTV.setText("Question: " + q + "\n Answer1: " + answerNo1 + "  Answer2: " + answerNo2 + "  Answer3: " + answerNo3);
-                        new CallAPI().execute(HOST, q, answerNo1, answerNo2, answerNo3);
+                        String answerNo1 = answers[0].trim();
+                        String answerNo2 = answers[1].trim();
+                        String answerNo3 = answers[2].trim();
+                        questionTV.setText("Question: " + questionText + "\n Answer1: " + answerNo1 + "  Answer2: " + answerNo2 + "  Answer3: " + answerNo3);
+                        new CallAPI().execute(HOST, questionText, answerNo1, answerNo2, answerNo3);
                     }
                 }
                 isDoingOCR = false;
