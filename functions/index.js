@@ -5,6 +5,8 @@ const request = require('request');
 const cheerio = require('cheerio');
 const bodyParser = require('body-parser');
 
+const { getCode, getName } = require('./country-list.js'); 
+
 // Create a new instance of express
 const app = express();
 const port = process.env.PORT || 8080;
@@ -29,16 +31,24 @@ let answerRegex1, answerRegex2, answerRegex3;
 
 app.post('', (req, res) => {
   score1 = score2 = score3 = 0;
-  const { question, answer1, answer2, answer3 } = req.body;
-  answerRegex1 = new RegExp(answer1.toLowerCase(), 'g');
-  answerRegex2 = new RegExp(answer2.toLowerCase(), 'g');
-  answerRegex3 = new RegExp(answer3.toLowerCase(), 'g');
+  let { question, answer1, answer2, answer3 } = req.body;
   console.log("Question: ", question);
   console.log("Answer1: ", answer1);
   console.log("Answer2: ", answer2);
   console.log("Answer3: ", answer3);
   let tokenizedQuestion = tokenizeQuestion(question);
-  
+
+  // Sanitize country names in answers
+  const santizedAnswer1 = getName(answer1);
+  const santizedAnswer2 = getName(answer2);
+  const santizedAnswer3 = getName(answer3);
+  if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
+  if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
+  if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
+  console.log(santizedAnswer1 + " " + santizedAnswer2 + " " + santizedAnswer3);
+  answerRegex1 = new RegExp(answer1.toLowerCase(), 'g');
+  answerRegex2 = new RegExp(answer2.toLowerCase(), 'g');
+  answerRegex3 = new RegExp(answer3.toLowerCase(), 'g');
   /*
     Make 4 queries
     1. Only the question
@@ -98,14 +108,14 @@ app.listen(port, (err) => {
 
 function tokenizeQuestion(question) {
   let q = question;
-  if (question.indexOf('đâu KHÔNG phải là một') >= 0) {
-    q = q.replace('đâu KHÔNG phải là một', '');
+  if (question.indexOf('đâu KHÔNG phải là một ') >= 0) {
+    q = q.replace('đâu KHÔNG phải là một ', '');
   }
-  if (question.indexOf('đâu KHÔNG phải là') >= 0) {
-    q = q.replace('đâu KHÔNG phải là', '');
+  if (question.indexOf('đâu KHÔNG phải là ') >= 0) {
+    q = q.replace('đâu KHÔNG phải là ', '');
   }
-  if (question.indexOf('KHÔNG') >= 0) {
-    q = q.replace('KHÔNG', '');
+  if (question.indexOf('KHÔNG ') >= 0) {
+    q = q.replace('KHÔNG ', '');
   }
   console.log(q);
   return q;
