@@ -1,3 +1,7 @@
+/* eslint-disable promise/catch-or-return */
+/* eslint-disable promise/always-return */
+/* eslint-disable no-loop-func */
+/* eslint-disable promise/no-nesting */
 const functions = require('firebase-functions');
 
 const express = require('express');
@@ -5,11 +9,11 @@ const request = require('request');
 const cheerio = require('cheerio');
 const bodyParser = require('body-parser');
 
-const { getCode, getName } = require('./country-list.js'); 
+const { getName } = require('./country-list.js');
 
 // Create a new instance of express
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 5000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -19,6 +23,8 @@ const RIGHT_SNIPPET_SELECTOR = 'div.ifM9O';
 const TOP_SNIPPET_SELECTOR = 'div.ifM9O';
 const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
+
+let oldTime = 0;
 
 const options = {
   headers: {
@@ -57,9 +63,9 @@ app.post('', (req, res) => {
     4. Question with answer 3
   */
   const query1 = makeQuery(tokenizedQuestion);
-  const query2 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer1);
-  const query3 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer2);
-  const query4 = makeQuery(tokenizedQuestion) + '+' + makeQuery(answer3);
+  const query2 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer1) + '"';
+  const query3 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer2) + '"';
+  const query4 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer3) + '"';
 
   /*
     How to calculate ratings
@@ -98,13 +104,64 @@ app.post('', (req, res) => {
   });
 })
 
-// Tell our app to listen on port 3000
-app.listen(port, (err) => {
-  if (err) {
-    throw err;
-  }
-  console.log(`Server started on port ${port}`);
-});
+// app.post('', (req, res) => {
+//   let { question, answer1, answer2, answer3 } = req.body;
+//   // Sanitize country names in answers
+//   const santizedAnswer1 = getName(answer1);
+//   const santizedAnswer2 = getName(answer2);
+//   const santizedAnswer3 = getName(answer3);
+//   if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
+//   if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
+//   if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
+//   // console.log(santizedAnswer1 + " " + santizedAnswer2 + " " + santizedAnswer3);
+//   answerRegex1 = new RegExp(answer1.toLowerCase(), 'g');
+//   answerRegex2 = new RegExp(answer2.toLowerCase(), 'g');
+//   answerRegex3 = new RegExp(answer3.toLowerCase(), 'g');
+//   let tokenizedQuestion = tokenizeQuestion(question);
+//   /*
+//     Make 4 queries
+//     1. Only the question
+//     2. Question with answer 1
+//     3. Question with answer 2
+//     4. Question with answer 3
+//   */
+//   const query1 = makeQuery(tokenizedQuestion);
+//   const query2 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer1) + '"';
+//   const query3 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer2) + '"';
+//   const query4 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer3) + '"';
+  
+//   let hrefs = [];
+//   Promise.all([
+//     makeTestRequest(query1).then((e) => {
+//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
+//         if (index < 5) {
+//         let href = e(element).attr('href');
+//         hrefs.push(href);
+//       });
+//     }),
+//     makeTestRequest(query2).then((e) => {
+//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
+//         let href = e(element).attr('href');
+//         hrefs.push(href);
+//       });
+//     }),
+//     makeTestRequest(query3).then((e) => {
+//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
+//         let href = e(element).attr('href');
+//         hrefs.push(href);
+//       });
+//     }),
+//     makeTestRequest(query4).then((e) => {
+//       let hrefs = [];
+//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
+//         let href = e(element).attr('href');
+//         hrefs.push(href);
+//       });
+//     })
+//   ]).then(() => {
+//       makeCrawlRequest(hrefs, res);
+//     });
+// })
 
 function tokenizeQuestion(question) {
   let q = question;
@@ -117,12 +174,50 @@ function tokenizeQuestion(question) {
   if (question.indexOf('KHÔNG ') >= 0) {
     q = q.replace('KHÔNG ', '');
   }
-  console.log(q);
   return q;
 }
 
 function makeQuery(string) {
   return string.split(' ').join('+');
+}
+
+function makeTestRequest(query) {
+  oldTime = Date.now();
+  return new Promise((resolve, reject) => {
+    options.url = encodeURI(`https://google.com/search?q=${query}`);
+    console.log('Query url', options.url);
+    request(options, (error, response, body) => {
+      if (error) {
+        console.log(error);
+        reject(error);
+      }
+      const $ = cheerio.load(body);
+      resolve($);
+    });
+  });
+}
+
+function makeCrawlRequest(urls, res) {
+  let promises = [];
+  for (const url of urls) {
+    promises.push(new Promise((resolve, reject) => {
+      options.url = encodeURI(url);
+      request(options, (error, response, body) => {
+        if (error) {
+          console.log(error);
+          reject(error);
+        }
+        const $ = cheerio.load(body);
+        resolve($);
+      });
+    }).then(() => {
+      console.log('Time promise: ', Date.now() - oldTime);
+    }));
+  }
+  Promise.all(promises).then(() => {
+    console.log('Time: ', Date.now() - oldTime);
+    res.end('Done');
+  });
 }
 
 function makeRequest(query) {
@@ -151,6 +246,14 @@ function calculateRating(search, regex) {
   let matches = search.match(regex);
   return matches ? matches.length : 0;
 }
+
+// Tell our app to listen on port 3000
+app.listen(port, (err) => {
+  if (err) {
+    throw err;
+  }
+  console.log(`Server started on port ${port}`);
+});
 
 // Expose Express API as a single Cloud Function:
 exports.question = functions.region('asia-east2').https.onRequest(app);
