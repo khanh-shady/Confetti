@@ -26,16 +26,28 @@ const PARENT_ELEMENT_SELECTOR = '#main';
 
 let oldTime = 0;
 
-const options = {
+const GoogleOptions = {
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
   },
   encoding: 'utf8'
 };
+
+const CoccocOptions = {
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
+    'Referer': 'https://coccoc.com/search',
+    'Cookie': 'serp_version=26117512/4c4d171;'
+  },
+  encoding: null,
+  gzip: true,
+  timeout: 2000
+};
+
 let score1, score2, score3;
 let answerRegex1, answerRegex2, answerRegex3;
 
-app.post('', (req, res) => {
+app.post('/google', (req, res) => {
   score1 = score2 = score3 = 0;
   let { question, answer1, answer2, answer3 } = req.body;
   console.log("Question: ", question);
@@ -104,64 +116,37 @@ app.post('', (req, res) => {
   });
 })
 
-// app.post('', (req, res) => {
-//   let { question, answer1, answer2, answer3 } = req.body;
-//   // Sanitize country names in answers
-//   const santizedAnswer1 = getName(answer1);
-//   const santizedAnswer2 = getName(answer2);
-//   const santizedAnswer3 = getName(answer3);
-//   if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
-//   if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
-//   if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
-//   // console.log(santizedAnswer1 + " " + santizedAnswer2 + " " + santizedAnswer3);
-//   answerRegex1 = new RegExp(answer1.toLowerCase(), 'g');
-//   answerRegex2 = new RegExp(answer2.toLowerCase(), 'g');
-//   answerRegex3 = new RegExp(answer3.toLowerCase(), 'g');
-//   let tokenizedQuestion = tokenizeQuestion(question);
-//   /*
-//     Make 4 queries
-//     1. Only the question
-//     2. Question with answer 1
-//     3. Question with answer 2
-//     4. Question with answer 3
-//   */
-//   const query1 = makeQuery(tokenizedQuestion);
-//   const query2 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer1) + '"';
-//   const query3 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer2) + '"';
-//   const query4 = makeQuery(tokenizedQuestion) + '+"' + makeQuery(answer3) + '"';
-  
-//   let hrefs = [];
-//   Promise.all([
-//     makeTestRequest(query1).then((e) => {
-//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
-//         if (index < 5) {
-//         let href = e(element).attr('href');
-//         hrefs.push(href);
-//       });
-//     }),
-//     makeTestRequest(query2).then((e) => {
-//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
-//         let href = e(element).attr('href');
-//         hrefs.push(href);
-//       });
-//     }),
-//     makeTestRequest(query3).then((e) => {
-//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
-//         let href = e(element).attr('href');
-//         hrefs.push(href);
-//       });
-//     }),
-//     makeTestRequest(query4).then((e) => {
-//       let hrefs = [];
-//       e('div.g .rc > .r > a:first-child', PARENT_ELEMENT_SELECTOR).each((index, element) => {
-//         let href = e(element).attr('href');
-//         hrefs.push(href);
-//       });
-//     })
-//   ]).then(() => {
-//       makeCrawlRequest(hrefs, res);
-//     });
-// })
+let urls = [];
+let kb;
+app.post('/coccoc', (req, res) => {
+  let { question, answer1, answer2, answer3 } = req.body;
+  // Sanitize country names in answers
+  const santizedAnswer1 = getName(answer1);
+  const santizedAnswer2 = getName(answer2);
+  const santizedAnswer3 = getName(answer3);
+  if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
+  if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
+  if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
+  /*
+    Make 4 queries
+    1. Only the question
+    2. Question with answer 1
+    3. Question with answer 2
+    4. Question with answer 3
+  */
+  const query1 = question;
+  const query2 = question + ' "' + answer1 + '"';
+  const query3 = question + ' "' + answer2 + '"';
+  const query4 = question + ' "' + answer3 + '"';
+
+  oldTime = Date.now();
+  urls = [];
+  Promise.all([makeTestRequest(query1), makeTestRequest(query2), makeTestRequest(query3), makeTestRequest(query4)])
+    .then(() => {
+      makeCrawlRequest(res, question, answer1, answer2, answer3);
+    });
+})
+
 
 function tokenizeQuestion(question) {
   let q = question;
@@ -182,48 +167,84 @@ function makeQuery(string) {
 }
 
 function makeTestRequest(query) {
-  oldTime = Date.now();
+  CoccocOptions.timeout = 2000;
+  CoccocOptions.url = `https://coccoc.com/composer?_=${Date.now()}&p=0&q=${encodeURIComponent(query)}&reqid=asd`;
   return new Promise((resolve, reject) => {
-    options.url = encodeURI(`https://google.com/search?q=${query}`);
-    console.log('Query url', options.url);
-    request(options, (error, response, body) => {
+    request.get(CoccocOptions, (error, response, body) => {
       if (error) {
         console.log(error);
-        reject(error);
+      } else {
+        console.log(query);
+        try {
+          let search_results = JSON.parse(body).search.search_results;
+          for (const result of search_results) {
+            if (!urls.includes(result.url)) {
+              urls.push(result.url);
+            }
+          }
+        } catch(e) {
+          console.log(e);
+        }
       }
-      const $ = cheerio.load(body);
-      resolve($);
+      resolve(true);
     });
   });
 }
 
-function makeCrawlRequest(urls, res) {
+function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
+  CoccocOptions.timeout = 1000;
   for (const url of urls) {
     promises.push(new Promise((resolve, reject) => {
-      options.url = encodeURI(url);
-      request(options, (error, response, body) => {
+      CoccocOptions.url = encodeURI(url);
+      request(CoccocOptions, (error, response, body) => {
         if (error) {
           console.log(error);
-          reject(error);
         }
-        const $ = cheerio.load(body);
-        resolve($);
+        if (body) {
+          const $ = cheerio.load(body);
+          kb += $.text();
+        }
+        console.log('Time promise: ', Date.now() - oldTime);
+        resolve(true);
       });
-    }).then(() => {
-      console.log('Time promise: ', Date.now() - oldTime);
     }));
   }
   Promise.all(promises).then(() => {
     console.log('Time: ', Date.now() - oldTime);
-    res.end('Done');
+    console.log('---------------------------------- URL LENGTH: ', urls.length);
+    params = {
+      'question': question,
+      'firstChoice': answer1,
+      'secondChoice': answer2,
+      'thirdChoice': answer3,
+      'kb': [kb]
+    }
+    params = JSON.stringify(params);
+    CoccocOptions.body = params;
+    CoccocOptions.encoding = 'utf8';
+    CoccocOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
+    request.post(CoccocOptions, (error, resp, body) => {
+      urls = [];
+      kb = '';
+      console.log('Final Time: ', Date.now() - oldTime);
+      if (body === 'A') res.end('Đáp án A');
+      else if (body === 'B') res.end('Đáp án B');
+      else if (body === 'C') res.end('Đáp án C');
+      else {
+        let rand = Math.floor(Math.random(100));
+        if (rand % 3 === 0) res.end('Random Đáp án A');
+        if (rand % 3 === 1) res.end('Random Đáp án B');
+        if (rand % 3 === 2) res.end('Random Đáp án C');
+      }
+    });
   });
 }
 
 function makeRequest(query) {
   return new Promise((resolve, reject) => {
-    options.url = encodeURI(`https://google.com/search?q=${query}`);
-    request(options, (error, response, body) => {
+    GoogleOptions.url = encodeURI(`https://google.com/search?q=${query}`);
+    request(GoogleOptions, (error, response, body) => {
       if (error) {
         console.log(error);
         reject(error);

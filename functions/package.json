@@ -7,7 +7,8 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "dev": "nodemon --tls-min-v1.0 index.js"
   },
   "engines": {
     "node": "8"
@@ -18,6 +19,7 @@
     "express": "^4.17.1",
     "firebase-admin": "^8.0.0",
     "firebase-functions": "^3.1.0",
+    "nodemon": "^1.19.1",
     "request": "^2.88.0"
   },
   "devDependencies": {
