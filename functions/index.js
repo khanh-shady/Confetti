@@ -23,6 +23,7 @@ const RIGHT_SNIPPET_SELECTOR = 'div.ifM9O';
 const TOP_SNIPPET_SELECTOR = 'div.ifM9O';
 const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
+const SEARCH_RESULT_URL = 'div.g div.rc div.r > a';
 
 let oldTime = 0;
 
@@ -33,11 +34,9 @@ const GoogleOptions = {
   encoding: 'utf8'
 };
 
-const CoccocOptions = {
+const crawlOptions = {
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
-    'Referer': 'https://coccoc.com/search',
-    'Cookie': 'serp_version=26117512/4c4d171;'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
   },
   encoding: null,
   gzip: true,
@@ -134,10 +133,10 @@ app.post('/coccoc', (req, res) => {
     3. Question with answer 2
     4. Question with answer 3
   */
-  const query1 = question;
-  const query2 = question + ' "' + answer1 + '"';
-  const query3 = question + ' "' + answer2 + '"';
-  const query4 = question + ' "' + answer3 + '"';
+  const query1 = makeQuery(question);
+  const query2 = makeQuery(question) + '+"' + makeQuery(answer1) + '"';
+  const query3 = makeQuery(question) + '+"' + makeQuery(answer2) + '"';
+  const query4 = makeQuery(question) + '+"' + makeQuery(answer3) + '"';
 
   oldTime = Date.now();
   urls = [];
@@ -167,23 +166,23 @@ function makeQuery(string) {
 }
 
 function makeTestRequest(query) {
-  CoccocOptions.timeout = 2000;
-  CoccocOptions.url = `https://coccoc.com/composer?_=${Date.now()}&p=0&q=${encodeURIComponent(query)}&reqid=asd`;
+  GoogleOptions.timeout = 3000;
+  GoogleOptions.url = encodeURI(`https://google.com/search?q=${query}`);
   return new Promise((resolve, reject) => {
-    request.get(CoccocOptions, (error, response, body) => {
+    request.get(GoogleOptions, (error, response, body) => {
       if (error) {
         console.log(error);
       } else {
-        console.log(query);
-        try {
-          let search_results = JSON.parse(body).search.search_results;
-          for (const result of search_results) {
-            if (!urls.includes(result.url)) {
-              urls.push(result.url);
+        if (body) {
+          const $ = cheerio.load(body);
+          let count = 0;
+          $(SEARCH_RESULT_URL, PARENT_ELEMENT_SELECTOR).each((index, element) => {
+            let url = $(element).attr('href');
+            if (!urls.includes(url) && count < 5) {
+              urls.push(url);
+              count++;
             }
-          }
-        } catch(e) {
-          console.log(e);
+          });
         }
       }
       resolve(true);
@@ -193,11 +192,11 @@ function makeTestRequest(query) {
 
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
-  CoccocOptions.timeout = 1000;
+  crawlOptions.timeout = 1000;
   for (const url of urls) {
     promises.push(new Promise((resolve, reject) => {
-      CoccocOptions.url = encodeURI(url);
-      request(CoccocOptions, (error, response, body) => {
+      crawlOptions.url = encodeURI(url);
+      request(crawlOptions, (error, response, body) => {
         if (error) {
           console.log(error);
         }
@@ -221,10 +220,10 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       'kb': [kb]
     }
     params = JSON.stringify(params);
-    CoccocOptions.body = params;
-    CoccocOptions.encoding = 'utf8';
-    CoccocOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
-    request.post(CoccocOptions, (error, resp, body) => {
+    crawlOptions.body = params;
+    crawlOptions.encoding = 'utf8';
+    crawlOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
+    request.post(crawlOptions, (error, resp, body) => {
       urls = [];
       kb = '';
       console.log('Final Time: ', Date.now() - oldTime);
