@@ -11,21 +11,21 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.util.Arrays;
+
+import static com.example.confetti.Overlay.isMainDevice;
 import static com.example.confetti.Overlay.mediaProjectionManager;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final String M20_IMEI_MAIN_DEVICE = "354556102461723";
+    private final String[] IMEI_MAIN_DEVICES = {"354556102461723", "354652107360810"};
 
     private final int REQUEST_CODE_IMEI = 1;
-    private final int REQUEST_CODE_OVERLAY = 2;
 
     private final int REQUEST_CODE = 1;
     public static MediaProjection mediaProjection;
@@ -40,18 +40,21 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         calculateAnswerPositions();
         deviceIMEI = getDeviceIMEI(this);
-//        if (deviceIMEI.equals(M20_IMEI_MAIN_DEVICE)) {
-        startMainDeviceFunction();
-//        }
-//        startCloneDevicesFunction();
+        if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
+            startMainDeviceFunction();
+            isMainDevice = true;
+        } else {
+            startCloneDevicesFunction();
+            isMainDevice = false;
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (canDrawOverlayViews(this)) {
+        if (canDrawOverlayViews(this) && isMainDevice) {
             startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_CODE);
-        } else {
+        } else if (!canDrawOverlayViews(this)) {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
         }
     }
@@ -64,7 +67,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startCloneDevicesFunction() {
-
+        if (!canDrawOverlayViews(this)) {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+        }
     }
 
     public static boolean canDrawOverlayViews(Context con){
@@ -76,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -112,9 +116,11 @@ public class MainActivity extends AppCompatActivity {
             case REQUEST_CODE_IMEI: {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     deviceIMEI = getDeviceIMEI(this);
-                    if (deviceIMEI.equals(M20_IMEI_MAIN_DEVICE)) {
+                    if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
                         startMainDeviceFunction();
+                        isMainDevice = true;
                     }
+                    isMainDevice = false;
                 }
                 break;
             }

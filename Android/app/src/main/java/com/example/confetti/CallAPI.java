@@ -1,6 +1,7 @@
 package com.example.confetti;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -72,6 +73,7 @@ public class CallAPI extends AsyncTask<String, String, String> {
             Overlay.posY = MainActivity.posC;
         }
         Overlay.resultTV.setText(result);
+        Log.d("AJKSDAKLJQ#@) J (JD ", "BU BUOI    " + result);
     }
 
     private String getPostDataString(String question, String answer1, String answer2, String answer3) throws UnsupportedEncodingException {

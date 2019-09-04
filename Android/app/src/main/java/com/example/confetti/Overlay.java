@@ -31,6 +31,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.Calendar;
 
 public class Overlay extends AccessibilityService {
 
@@ -38,6 +39,7 @@ public class Overlay extends AccessibilityService {
     private View mOverlay;
     private TextView questionTV;
     public static TextView resultTV;
+    public static boolean isMainDevice;
 
     private static final String TAG = Overlay.class.getName();
     private static String STORE_DIRECTORY;
@@ -55,7 +57,15 @@ public class Overlay extends AccessibilityService {
     private int mDensityDpi;
     private WindowManager windowManager;
 
-    private final String HOST = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/coccoc";
+    private final String RANKING = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/ranking";
+    private final String OLD = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/old";
+    private String HOST;
+    private final String CLONE_IS_SHOW_STARTED = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/isShowStarted";
+    private final String CLONE_RESULT = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/result";
+
+    public static boolean isShowStarted = false;
+    public static boolean isNewResult = true;
+    public static int TIMER = 5000;
 
     private boolean isDoingOCR = false;
     private boolean isOCREnabled = false;
@@ -95,7 +105,10 @@ public class Overlay extends AccessibilityService {
         wm.getDefaultDisplay().getRealSize(size);
         screenHeight = size.y;
 
-        mTessOCR = new TessOCR (this, "vie");
+        if (isMainDevice) {
+            mTessOCR = new TessOCR(this, "vie");
+        }
+
         int LAYOUT_FLAG;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
@@ -109,7 +122,6 @@ public class Overlay extends AccessibilityService {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
 
-        //Specify the chat head position
         params.gravity = Gravity.TOP | Gravity.LEFT;
         params.x = 0;
         params.y = 100;
@@ -132,20 +144,21 @@ public class Overlay extends AccessibilityService {
                 dispatchClick(posX, posY);
             }
         });
-        //Set the close button.
-        ImageView closeButton = (ImageView) mOverlay.findViewById(R.id.close_btn);
-        closeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //close the service and remove the chat head from the window
-                stopSelf();
-            }
-        });
         ImageView screenshotButton = (ImageView) mOverlay.findViewById(R.id.screenshot_btn);
         screenshotButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //enable do OCR
+                HOST = RANKING;
+                isOCREnabled = true;
+            }
+        });
+        ImageView rankingButton = (ImageView) mOverlay.findViewById(R.id.ranking_btn);
+        rankingButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //enable do OCR
+                HOST = OLD;
                 isOCREnabled = true;
             }
         });
@@ -161,27 +174,46 @@ public class Overlay extends AccessibilityService {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
 
         // start capture handling thread
-        new Thread() {
-            @Override
-            public void run() {
-                Looper.prepare();
-                mHandler = new Handler();
-                Looper.loop();
-            }
-        }.start();
+        if (isMainDevice) {
+            new Thread() {
+                @Override
+                public void run() {
+                    Looper.prepare();
+                    mHandler = new Handler();
+                    Looper.loop();
+                }
+            }.start();
+        } else {
+            mHandler = new Handler();
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!isShowStarted && isTimeForConfetti()) {
+                        new CallAPIClone().execute(CLONE_IS_SHOW_STARTED);
+                    } else if (isShowStarted && isTimeForConfetti()) {
+                        new CallAPIClone().execute(CLONE_RESULT);
+                    }
+                    mHandler.postDelayed(this, TIMER);
+                }
+            }, TIMER);
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        initRecorder();
+        if (isMainDevice) {
+            initRecorder();
+        }
         return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mOverlay != null) mWindowManager.removeView(mOverlay);
-        stopRecorderAndScreen();
+        if (isMainDevice) {
+            if (mOverlay != null) mWindowManager.removeView(mOverlay);
+            stopRecorderAndScreen();
+        }
     }
 
     private void initRecorder() {
@@ -290,7 +322,6 @@ public class Overlay extends AccessibilityService {
         if (isDoingOCR) {
             return;
         }
-        // 1400 + 200
         Log.d(TAG, "SIZE: " + screenHeight);
         final Bitmap question = Bitmap.createBitmap(bitmap, 0, (int) (screenHeight * 0.6), width, (int) (screenHeight * 0.1));
         final Bitmap answer = Bitmap.createBitmap(bitmap, 0, (int) (screenHeight * 0.7), width - 330, height - (int) (screenHeight * 0.75));
@@ -318,7 +349,6 @@ public class Overlay extends AccessibilityService {
     }
 
     private GestureDescription createClick(float x, float y) {
-        // for a single tap a duration of 1 ms is enough
         final int DURATION = 1;
         Path clickPath = new Path();
         clickPath.moveTo(x, y);
@@ -330,5 +360,14 @@ public class Overlay extends AccessibilityService {
 
     public void dispatchClick(int x, int y) {
         dispatchGesture(createClick(x, y), null, null);
+    }
+
+    private boolean isTimeForConfetti() {
+        int currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY); //Current hour
+        int currentMinute = Calendar.getInstance().get(Calendar.MINUTE); //Current minute
+        if (currentHour == 21 && currentMinute > 15 && currentMinute < 40) {
+            return true;
+        }
+        return false;
     }
 }
