@@ -2,10 +2,12 @@ package com.example.confetti;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -53,10 +55,12 @@ public class Overlay extends AccessibilityService {
     private int mDensityDpi;
     private WindowManager windowManager;
 
-    private final String HOST = "https://asia-east2-confetti-faca0.cloudfunctions.net/question";
+    private final String HOST = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/coccoc";
 
     private boolean isDoingOCR = false;
     private boolean isOCREnabled = false;
+
+    private int screenHeight;
 
     //OCR
     private TessOCR mTessOCR;
@@ -84,6 +88,12 @@ public class Overlay extends AccessibilityService {
     public void onCreate() {
         super.onCreate();
         mOverlay = LayoutInflater.from(this).inflate(R.layout.layout_overlay, null);
+
+        // Get android size
+        WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        Point size = new Point();
+        wm.getDefaultDisplay().getRealSize(size);
+        screenHeight = size.y;
 
         mTessOCR = new TessOCR (this, "vie");
         int LAYOUT_FLAG;
@@ -280,8 +290,10 @@ public class Overlay extends AccessibilityService {
         if (isDoingOCR) {
             return;
         }
-        final Bitmap question = Bitmap.createBitmap(bitmap, 0, 1400, width, 200);
-        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, 1600, width - 330, height - 1750);
+        // 1400 + 200
+        Log.d(TAG, "SIZE: " + screenHeight);
+        final Bitmap question = Bitmap.createBitmap(bitmap, 0, (int) (screenHeight * 0.6), width, (int) (screenHeight * 0.1));
+        final Bitmap answer = Bitmap.createBitmap(bitmap, 0, (int) (screenHeight * 0.7), width - 330, height - (int) (screenHeight * 0.75));
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             public void run() {
                 isDoingOCR = true;

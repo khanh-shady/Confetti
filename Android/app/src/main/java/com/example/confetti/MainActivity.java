@@ -40,10 +40,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         calculateAnswerPositions();
         deviceIMEI = getDeviceIMEI(this);
-        if (deviceIMEI.equals(M20_IMEI_MAIN_DEVICE)) {
-            startMainDeviceFunction();
-        }
-        startCloneDevicesFunction();
+//        if (deviceIMEI.equals(M20_IMEI_MAIN_DEVICE)) {
+        startMainDeviceFunction();
+//        }
+//        startCloneDevicesFunction();
     }
 
     @Override
