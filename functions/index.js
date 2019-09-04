@@ -9,6 +9,11 @@ const request = require('request');
 const cheerio = require('cheerio');
 const bodyParser = require('body-parser');
 
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+
+let db = admin.firestore();
+
 const { getName } = require('./country-list.js');
 
 // Create a new instance of express
@@ -46,9 +51,46 @@ const crawlOptions = {
 let score1, score2, score3;
 let answerRegex1, answerRegex2, answerRegex3;
 
-app.post('/google', (req, res) => {
+app.get('/isShowStarted', (req, res) => {
+  // Query if show is started or not
+  db.collection('clone').get()
+  .then((snapshot) => {
+    snapshot.forEach((doc) => {
+      if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().isShowStarted) {
+        res.end(doc.data().isShowStarted);
+      }
+    });
+    res.end('false');
+  }).catch((err) => {
+    console.log('Error getting documents', err);
+  });
+});
+
+app.get('/result', (req, res) => {
+  // Query for result
+  db.collection('clone').get()
+  .then((snapshot) => {
+    snapshot.forEach((doc) => {
+      if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().result.length > 0) {
+        res.end(doc.data().result);
+      }
+    });
+    res.end('Not yet');
+  }).catch((err) => {
+    console.log('Error getting documents', err);
+  });
+})
+
+app.post('/old', (req, res) => {
   score1 = score2 = score3 = 0;
   let { question, answer1, answer2, answer3 } = req.body;
+
+  // Save question to firestore
+  let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+  let setQuestion = docRef.set({
+    isShowStarted: 'true', question, answer1, answer2, answer3, result: ''
+  });
+
   console.log("Question: ", question);
   console.log("Answer1: ", answer1);
   console.log("Answer2: ", answer2);
@@ -101,11 +143,31 @@ app.post('/google', (req, res) => {
     if (question.indexOf('KHÔNG') < 0 && question.indexOf('CHƯA') < 0) {
       score1 === max ? result = answer1 : score2 === max ? result = answer2 : result = answer3;
       score1 === max ? resultInLetter = "Đáp án A" : score2 === max ? resultInLetter = "Đáp án B" : resultInLetter = "Đáp án C";
+      // Save result to Firestore
+      let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+      let setResult = docRef.set({
+        question: '',
+        answer1: '',
+        answer2: '',
+        answer3: '',
+        isShowStarted: 'true',
+        result: resultInLetter
+      });
       res.end(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
     } else {
       score1 === min ? result = answer1 : score2 === min ? result = answer2 : result = answer3;
       score1 === min ? resultInLetter = "Đáp án A" : score2 === min ? resultInLetter = "Đáp án B" : resultInLetter = "Đáp án C";
+      // Save result to Firestore
+      let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+      let setResult = docRef.set({
+        question: '',
+        answer1: '',
+        answer2: '',
+        answer3: '',
+        isShowStarted: 'true',
+        result: resultInLetter
+      });
       res.end(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
     }
@@ -117,8 +179,15 @@ app.post('/google', (req, res) => {
 
 let urls = [];
 let kb;
-app.post('/coccoc', (req, res) => {
+app.post('/ranking', (req, res) => {
   let { question, answer1, answer2, answer3 } = req.body;
+
+  // Save question to firestore
+  let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+  let setQuestion = docRef.set({
+    isShowStarted: 'true', question, answer1, answer2, answer3, result: ''
+  });
+
   // Sanitize country names in answers
   const santizedAnswer1 = getName(answer1);
   const santizedAnswer2 = getName(answer2);
@@ -227,15 +296,26 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       urls = [];
       kb = '';
       console.log('Final Time: ', Date.now() - oldTime);
-      if (body === 'A') res.end('Đáp án A');
-      else if (body === 'B') res.end('Đáp án B');
-      else if (body === 'C') res.end('Đáp án C');
+      if (body === 'A') result = 'Đáp án A';
+      else if (body === 'B') result = 'Đáp án B';
+      else if (body === 'C') result = 'Đáp án C';
       else {
         let rand = Math.floor(Math.random(100));
-        if (rand % 3 === 0) res.end('Random Đáp án A');
-        if (rand % 3 === 1) res.end('Random Đáp án B');
-        if (rand % 3 === 2) res.end('Random Đáp án C');
+        if (rand % 3 === 0) result = 'Random Đáp án A';
+        if (rand % 3 === 1) result = 'Random Đáp án B';
+        if (rand % 3 === 2) result = 'Random Đáp án C';
       }
+      // Save result to Firestore
+      let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+      let setResult = docRef.set({
+        question: '',
+        answer1: '',
+        answer2: '',
+        answer3: '',
+        isShowStarted: 'true',
+        result
+      });
+      res.end(result);
     });
   });
 }
