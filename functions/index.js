@@ -44,7 +44,8 @@ const crawlOptions = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
   },
   encoding: null,
-  gzip: true
+  gzip: true,
+  timeout: 2000
 };
 
 let score1, score2, score3;
@@ -270,9 +271,8 @@ function makeTestRequest(query) {
 
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
-  crawlOptions.timeout = 2000;
   for (const url of urls) {
-    promises.push(new Promise((resolve, reject) => {
+    promises.push(Promise.race([new Promise((resolve, reject) => {
       crawlOptions.url = encodeURI(url);
       request(crawlOptions, (error, response, body) => {
         if (error) {
@@ -281,15 +281,19 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
         if (body) {
           const $ = cheerio.load(body);
           kb += $.text();
+          console.log(url.substr(0, 90) + "    size: " + Buffer.byteLength($.text()) + ' bytes');
         }
         console.log('Time promise: ', Date.now() - oldTime);
         resolve(true);
       });
-    }));
+    }), new Promise(((resolve, reject) => {
+      setTimeout(resolve, 2500, true);
+    }))]));
   }
   Promise.all(promises).then(() => {
     console.log('Time: ', Date.now() - oldTime);
     console.log('---------------------------------- URL LENGTH: ', urls.length);
+    console.log(Buffer.byteLength(kb) + ' bytes');
     params = {
       'question': question,
       'firstChoice': answer1,
