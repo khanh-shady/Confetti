@@ -32,6 +32,7 @@ public class CallAPI extends AsyncTask<String, String, String> {
         String answer1 = params[2]; //data to post
         String answer2 = params[3]; //data to post
         String answer3 = params[4]; //data to post
+        String questionNumber = params[5]; //data to post
         String result = "";
 
         try {
@@ -43,7 +44,7 @@ public class CallAPI extends AsyncTask<String, String, String> {
 
             OutputStream os = conn.getOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, "UTF-8"));
-            writer.write(getPostDataString(question, answer1, answer2, answer3));
+            writer.write(getPostDataString(question, answer1, answer2, answer3, questionNumber));
             writer.flush();
             writer.close();
             os.close();
@@ -75,12 +76,13 @@ public class CallAPI extends AsyncTask<String, String, String> {
         Overlay.resultTV.setText("Câu " + Overlay.questionNumber + ": " + result);
     }
 
-    private String getPostDataString(String question, String answer1, String answer2, String answer3) throws UnsupportedEncodingException {
+    private String getPostDataString(String question, String answer1, String answer2, String answer3, String questionNumber) throws UnsupportedEncodingException {
         HashMap<String, String> params = new HashMap<>();
         params.put("question", question);
         params.put("answer1", answer1);
         params.put("answer2", answer2);
         params.put("answer3", answer3);
+        params.put("questionNumber", questionNumber);
         StringBuilder result = new StringBuilder();
         boolean first = true;
         for(Map.Entry<String, String> entry : params.entrySet()){

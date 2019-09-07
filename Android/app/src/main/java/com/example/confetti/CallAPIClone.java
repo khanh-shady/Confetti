@@ -52,6 +52,10 @@ public class CallAPIClone extends AsyncTask<String, String, String> {
             Overlay.TIMER = 5000;
             return;
         }
+        String resultNumber = result.split(" ")[1];
+        if (!resultNumber.equals(Overlay.questionNumber)) {
+            return;
+        }
         if (result.contains("Đáp án A")) {
             Overlay.posY = MainActivity.posA;
         } else if (result.contains("Đáp án B")) {
@@ -59,8 +63,6 @@ public class CallAPIClone extends AsyncTask<String, String, String> {
         } else if (result.contains("Đáp án C")){
             Overlay.posY = MainActivity.posC;
         }
-        if (!Overlay.clickedQuestionNumber.equals(Overlay.questionNumber)) {
-            Overlay.resultTV.setText("Câu " + Overlay.questionNumber + ": " + result);
-        }
+        Overlay.resultTV.setText(result);
     }
 }

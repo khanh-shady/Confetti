@@ -42,7 +42,7 @@ public class Overlay extends AccessibilityService {
 
     public static int posX = 100, posY = 0;
 
-    public static String lastQuestionNumber = "", questionNumber = "", clickedQuestionNumber = "";
+    public static String lastQuestionNumber = "", questionNumber = "";
     private String question = "", answer1 = "", answer2 = "", answer3 = "";
     private boolean isNextQuestion = false, isNextAnswer1 = false, isNextAnswer2 = false, isNextAnswer3 = false;
 
@@ -84,7 +84,7 @@ public class Overlay extends AccessibilityService {
                         if (questionTV != null)
                             questionTV.setText(questionNumber + ": " + question + "\nAnswer1: " + answer1 + "\nAnswer2: " + answer2 + "\nAnswer3: " + answer3);
                         if (MainActivity.isMainDevice) {
-                            new CallAPI().execute(HOST, question, answer1, answer2, answer3);
+                            new CallAPI().execute(HOST, question, answer1, answer2, answer3, questionNumber);
                         }
                     }
                 }
@@ -142,7 +142,6 @@ public class Overlay extends AccessibilityService {
             @Override
             public void afterTextChanged(Editable editable) {
                 dispatchClick(posX, posY);
-                clickedQuestionNumber = questionNumber;
             }
         });
         ImageView screenshotButton = (ImageView) mOverlay.findViewById(R.id.screenshot_btn);
