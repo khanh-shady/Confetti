@@ -44,8 +44,7 @@ const crawlOptions = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
   },
   encoding: null,
-  gzip: true,
-  timeout: 2000
+  gzip: true
 };
 
 let score1, score2, score3;
@@ -53,6 +52,7 @@ let answerRegex1, answerRegex2, answerRegex3;
 
 app.get('/isShowStarted', (req, res) => {
   // Query if show is started or not
+  console.log('REQUEST FOR IS SHOW STARTED: ', Date.now());
   db.collection('clone').get()
   .then((snapshot) => {
     snapshot.forEach((doc) => {
@@ -68,6 +68,7 @@ app.get('/isShowStarted', (req, res) => {
 
 app.get('/result', (req, res) => {
   // Query for result
+  console.log('REQUEST FOR RESULT: ', Date.now());
   db.collection('clone').get()
   .then((snapshot) => {
     snapshot.forEach((doc) => {
@@ -82,6 +83,7 @@ app.get('/result', (req, res) => {
 })
 
 app.post('/old', (req, res) => {
+  console.log('OLD METHOD: ', Date.now());
   score1 = score2 = score3 = 0;
   let { question, answer1, answer2, answer3 } = req.body;
 
@@ -180,13 +182,19 @@ app.post('/old', (req, res) => {
 let urls = [];
 let kb;
 app.post('/ranking', (req, res) => {
+  console.log('RANKING METHOD: ', Date.now() - oldTime);
   let { question, answer1, answer2, answer3 } = req.body;
 
+  console.log("Question: ", question);
+  console.log("Answer1: ", answer1);
+  console.log("Answer2: ", answer2);
+  console.log("Answer3: ", answer3);
   // Save question to firestore
   let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
   let setQuestion = docRef.set({
     isShowStarted: 'true', question, answer1, answer2, answer3, result: ''
   });
+  console.log('Save to Firestore: ', Date.now() - oldTime);
 
   // Sanitize country names in answers
   const santizedAnswer1 = getName(answer1);
@@ -211,6 +219,7 @@ app.post('/ranking', (req, res) => {
   urls = [];
   Promise.all([makeTestRequest(query1), makeTestRequest(query2), makeTestRequest(query3), makeTestRequest(query4)])
     .then(() => {
+      console.log('Time spent on parsing Google SERP: ', Date.now() - oldTime);
       makeCrawlRequest(res, question, answer1, answer2, answer3);
     });
 })
@@ -261,7 +270,7 @@ function makeTestRequest(query) {
 
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
-  crawlOptions.timeout = 1000;
+  crawlOptions.timeout = 2000;
   for (const url of urls) {
     promises.push(new Promise((resolve, reject) => {
       crawlOptions.url = encodeURI(url);
@@ -296,11 +305,12 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       urls = [];
       kb = '';
       console.log('Final Time: ', Date.now() - oldTime);
+      console.log('Ranking method result: ', body);
       if (body === 'A') result = 'Đáp án A';
       else if (body === 'B') result = 'Đáp án B';
       else if (body === 'C') result = 'Đáp án C';
       else {
-        let rand = Math.floor(Math.random(100));
+        let rand = Date.now();
         if (rand % 3 === 0) result = 'Random Đáp án A';
         if (rand % 3 === 1) result = 'Random Đáp án B';
         if (rand % 3 === 2) result = 'Random Đáp án C';
@@ -347,7 +357,6 @@ function calculateRating(search, regex) {
   return matches ? matches.length : 0;
 }
 
-// Tell our app to listen on port 3000
 app.listen(port, (err) => {
   if (err) {
     throw err;
