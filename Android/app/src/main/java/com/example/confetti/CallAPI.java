@@ -69,11 +69,10 @@ public class CallAPI extends AsyncTask<String, String, String> {
             Overlay.posY = MainActivity.posA;
         } else if (result.contains("Đáp án B")) {
             Overlay.posY = MainActivity.posB;
-        } else {
+        } else if (result.contains("Đáp án C")) {
             Overlay.posY = MainActivity.posC;
         }
-        Overlay.resultTV.setText(result);
-        Log.d("AJKSDAKLJQ#@) J (JD ", "BU BUOI    " + result);
+        Overlay.resultTV.setText("Câu " + Overlay.questionNumber + ": " + result);
     }
 
     private String getPostDataString(String question, String answer1, String answer2, String answer3) throws UnsupportedEncodingException {

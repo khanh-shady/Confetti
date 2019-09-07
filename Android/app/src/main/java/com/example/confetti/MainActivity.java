@@ -18,9 +18,6 @@ import androidx.core.app.ActivityCompat;
 
 import java.util.Arrays;
 
-import static com.example.confetti.Overlay.isMainDevice;
-import static com.example.confetti.Overlay.mediaProjectionManager;
-
 public class MainActivity extends AppCompatActivity {
 
     private final String[] IMEI_MAIN_DEVICES = {"354556102461723", "354652107360810"};
@@ -31,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     public static MediaProjection mediaProjection;
 
     public static int posA, posB, posC;
+    public static boolean isMainDevice;
 
     private String deviceIMEI = "";
 
@@ -40,11 +38,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         calculateAnswerPositions();
         deviceIMEI = getDeviceIMEI(this);
+        if (!canDrawOverlayViews(this)) {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+        }
         if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
-            startMainDeviceFunction();
             isMainDevice = true;
         } else {
-            startCloneDevicesFunction();
             isMainDevice = false;
         }
     }
@@ -52,21 +51,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (canDrawOverlayViews(this) && isMainDevice) {
-            startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), REQUEST_CODE);
-        } else if (!canDrawOverlayViews(this)) {
-            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
-        }
-    }
-
-    private void startMainDeviceFunction() {
-        mediaProjectionManager = (MediaProjectionManager) getApplicationContext().getSystemService(MEDIA_PROJECTION_SERVICE);
-        if (!canDrawOverlayViews(this)) {
-            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
-        }
-    }
-
-    private void startCloneDevicesFunction() {
         if (!canDrawOverlayViews(this)) {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
         }
@@ -117,10 +101,10 @@ public class MainActivity extends AppCompatActivity {
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     deviceIMEI = getDeviceIMEI(this);
                     if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
-                        startMainDeviceFunction();
                         isMainDevice = true;
+                    } else {
+                        isMainDevice = false;
                     }
-                    isMainDevice = false;
                 }
                 break;
             }

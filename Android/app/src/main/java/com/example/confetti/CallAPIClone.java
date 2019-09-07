@@ -59,12 +59,8 @@ public class CallAPIClone extends AsyncTask<String, String, String> {
         } else if (result.contains("Đáp án C")){
             Overlay.posY = MainActivity.posC;
         }
-        if (Overlay.isNewResult) {
-            Overlay.isNewResult = false;
-            Overlay.resultTV.setText(result);
-        }
-        if (result.contains("Not yet")) {
-            Overlay.isNewResult = true;
+        if (!Overlay.clickedQuestionNumber.equals(Overlay.questionNumber)) {
+            Overlay.resultTV.setText("Câu " + Overlay.questionNumber + ": " + result);
         }
     }
 }
