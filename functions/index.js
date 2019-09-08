@@ -29,6 +29,8 @@ const TOP_SNIPPET_SELECTOR = 'div.ifM9O';
 const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
 const SEARCH_RESULT_URL = 'div.g div.rc div.r > a';
+const URL_SANITIZER = /(https:\/\/translate.google.com\/translate\?hl=en&sl=vi&u=)(.*)(&prev=search)/;
+const MAX_REQUEST_SIZE = 6000000;
 
 let oldTime = 0;
 
@@ -74,7 +76,7 @@ app.get('/result', (req, res) => {
   .then((snapshot) => {
     snapshot.forEach((doc) => {
       if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().result.length > 0) {
-        res.end(doc.data().result);
+        res.end("Câu " + doc.data().questionNumber + " : " + doc.data().result);
       }
     });
     res.end('Not yet');
@@ -86,12 +88,12 @@ app.get('/result', (req, res) => {
 app.post('/old', (req, res) => {
   console.log('OLD METHOD: ', Date.now());
   score1 = score2 = score3 = 0;
-  let { question, answer1, answer2, answer3 } = req.body;
+  let { question, answer1, answer2, answer3, questionNumber } = req.body;
 
   // Save question to firestore
   let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
   let setQuestion = docRef.set({
-    isShowStarted: 'true', question, answer1, answer2, answer3, result: ''
+    isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
   });
 
   console.log("Question: ", question);
@@ -154,7 +156,8 @@ app.post('/old', (req, res) => {
         answer2: '',
         answer3: '',
         isShowStarted: 'true',
-        result: resultInLetter
+        result: resultInLetter,
+        questionNumber
       });
       res.end(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
@@ -169,7 +172,8 @@ app.post('/old', (req, res) => {
         answer2: '',
         answer3: '',
         isShowStarted: 'true',
-        result: resultInLetter
+        result: resultInLetter,
+        questionNumber
       });
       res.end(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
@@ -181,11 +185,12 @@ app.post('/old', (req, res) => {
 })
 
 let urls = [];
-let kb;
+let kb = '';
+let questionNo;
 app.post('/ranking', (req, res) => {
   console.log('RANKING METHOD: ', Date.now() - oldTime);
-  let { question, answer1, answer2, answer3 } = req.body;
-
+  let { question, answer1, answer2, answer3, questionNumber } = req.body;
+  questionNo = questionNumber;
   console.log("Question: ", question);
   console.log("Answer1: ", answer1);
   console.log("Answer2: ", answer2);
@@ -193,7 +198,7 @@ app.post('/ranking', (req, res) => {
   // Save question to firestore
   let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
   let setQuestion = docRef.set({
-    isShowStarted: 'true', question, answer1, answer2, answer3, result: ''
+    isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
   });
   console.log('Save to Firestore: ', Date.now() - oldTime);
 
@@ -254,12 +259,14 @@ function makeTestRequest(query) {
       } else {
         if (body) {
           const $ = cheerio.load(body);
-          let count = 0;
           $(SEARCH_RESULT_URL, PARENT_ELEMENT_SELECTOR).each((index, element) => {
             let url = $(element).attr('href');
-            if (!urls.includes(url) && count < 5) {
+            if (url.match(URL_SANITIZER)) {
+              url = url.match(URL_SANITIZER)[2];
+            }
+            console.log(url);
+            if (!urls.includes(url)) {
               urls.push(url);
-              count++;
             }
           });
         }
@@ -280,14 +287,19 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
         }
         if (body) {
           const $ = cheerio.load(body);
-          kb += $.text();
-          console.log(url.substr(0, 90) + "    size: " + Buffer.byteLength($.text()) + ' bytes');
+          const s = $.text();
+          if (Buffer.byteLength(s) + Buffer.byteLength(kb) >= MAX_REQUEST_SIZE) {
+            console.log('Exceed limit: ', Date.now() - oldTime);
+            resolve(true);
+          }
+          kb += s;
         }
-        console.log('Time promise: ', Date.now() - oldTime);
         resolve(true);
       });
     }), new Promise(((resolve, reject) => {
-      setTimeout(resolve, 2500, true);
+      setTimeout(() => {
+        resolve(true);
+      }, 5000);
     }))]));
   }
   Promise.all(promises).then(() => {
@@ -327,7 +339,8 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
         answer2: '',
         answer3: '',
         isShowStarted: 'true',
-        result
+        result,
+        questionNumber: questionNo
       });
       res.end(result);
     });
