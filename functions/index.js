@@ -12,7 +12,7 @@ const sender = new gcm.Sender('AAAARzEuLYg:APA91bGYPaGcDMMQyweGNXQf4GNHYXERzCqwk
 const message = new gcm.Message();
 
 // Specify which registration IDs to deliver the message to
-const regTokens = ['cSX9EkhXBgY:APA91bF5-YYnOWQYn2qlcSb3n739-7qVgPS-R_I7m4JJAVffZbhjo5slMrafq3piQ5wM2C1dHWHAu2nlyug3bO1Dgjf_j6dFt21gSWgzOk8aG1eoVELb0kCIL26sXAFAeg0MxHiZHB2f'];
+// const regTokens = ['cSX9EkhXBgY:APA91bF5-YYnOWQYn2qlcSb3n739-7qVgPS-R_I7m4JJAVffZbhjo5slMrafq3piQ5wM2C1dHWHAu2nlyug3bO1Dgjf_j6dFt21gSWgzOk8aG1eoVELb0kCIL26sXAFAeg0MxHiZHB2f'];
 
 const express = require('express');
 const request = require('request');
@@ -49,9 +49,9 @@ function pushNotification(questionNo, result) {
   // Actually send the message
   message.addData('questionNo', questionNo);
   message.addData('result', result);
-  sender.send(message, { registrationTokens: regTokens }, (err, response) => {
+  sender.send(message, { to: '/topics/result' }, (err, response) => {
     if (err) console.error(err);
-    else console.log(response);
+    else console.log("OK MADAFAKA: ", response);
   });
 }
 
@@ -366,6 +366,7 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
         result,
         questionNumber: questionNo
       });
+      pushNotification(questionNo, result);
       res.end(result);
     });
   });
