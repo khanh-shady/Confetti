@@ -3,11 +3,22 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable promise/no-nesting */
 const functions = require('firebase-functions');
+const gcm = require('node-gcm');
+
+// Set up the sender with your GCM/FCM API key (declare this once for multiple messages)
+const sender = new gcm.Sender('AAAARzEuLYg:APA91bGYPaGcDMMQyweGNXQf4GNHYXERzCqwkxdc_CWhV8CCE24EWVqYfBoVPXKLOgRdxrCRbo4L6lThEgCmVZ8vYMok-VrQ5rCKegdxD-WTu_Ad9NkYBJCSBtAxX-mHKUccg5R6PzDV');
+
+// Prepare a message to be sent
+const message = new gcm.Message();
+
+// Specify which registration IDs to deliver the message to
+const regTokens = ['cSX9EkhXBgY:APA91bF5-YYnOWQYn2qlcSb3n739-7qVgPS-R_I7m4JJAVffZbhjo5slMrafq3piQ5wM2C1dHWHAu2nlyug3bO1Dgjf_j6dFt21gSWgzOk8aG1eoVELb0kCIL26sXAFAeg0MxHiZHB2f'];
 
 const express = require('express');
 const request = require('request');
 const cheerio = require('cheerio');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
@@ -33,6 +44,16 @@ const URL_SANITIZER = /(https:\/\/translate.google.com\/translate\?hl=en&sl=vi&u
 const MAX_REQUEST_SIZE = 6000000;
 
 let oldTime = 0;
+
+function pushNotification(questionNo, result) {
+  // Actually send the message
+  message.addData('questionNo', questionNo);
+  message.addData('result', result);
+  sender.send(message, { registrationTokens: regTokens }, (err, response) => {
+    if (err) console.error(err);
+    else console.log(response);
+  });
+}
 
 const GoogleOptions = {
   headers: {
@@ -79,7 +100,7 @@ app.get('/result', (req, res) => {
         res.end("Câu " + doc.data().questionNumber + " : " + doc.data().result);
       }
     });
-    res.end('Not yet');
+    res.end('Not yet!');
   }).catch((err) => {
     console.log('Error getting documents', err);
   });
@@ -159,6 +180,7 @@ app.post('/old', (req, res) => {
         result: resultInLetter,
         questionNumber
       });
+      pushNotification(questionNumber, resultInLetter);
       res.end(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${max} in (${score1}, ${score2}, ${score3})`);
     } else {
@@ -175,6 +197,7 @@ app.post('/old', (req, res) => {
         result: resultInLetter,
         questionNumber
       });
+      pushNotification(questionNumber, resultInLetter);
       res.end(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
       console.log(`${resultInLetter}. ${result} with a score of ${min} in (${score1}, ${score2}, ${score3})`);
     }
@@ -264,7 +287,6 @@ function makeTestRequest(query) {
             if (url.match(URL_SANITIZER)) {
               url = url.match(URL_SANITIZER)[2];
             }
-            console.log(url);
             if (!urls.includes(url)) {
               urls.push(url);
             }
@@ -289,7 +311,7 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
           const $ = cheerio.load(body);
           const s = $.text();
           if (Buffer.byteLength(s) + Buffer.byteLength(kb) >= MAX_REQUEST_SIZE) {
-            console.log('Exceed limit: ', Date.now() - oldTime);
+            console.log('Exceed limit: ', Buffer.byteLength(s) + Buffer.byteLength(kb) + ' bytes', Date.now() - oldTime);
             resolve(true);
           }
           kb += s;
@@ -316,21 +338,23 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
     params = JSON.stringify(params);
     crawlOptions.body = params;
     crawlOptions.encoding = 'utf8';
-    crawlOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
+    crawlOptions.timeout = 5000;
+    crawlOptions.url = 'https://us-central1-confetti-faca0.cloudfunctions.net/ranking';
     request.post(crawlOptions, (error, resp, body) => {
-      urls = [];
-      kb = '';
-      console.log('Final Time: ', Date.now() - oldTime);
-      console.log('Ranking method result: ', body);
-      if (body === 'A') result = 'Đáp án A';
-      else if (body === 'B') result = 'Đáp án B';
-      else if (body === 'C') result = 'Đáp án C';
+      if (body[0] === 'A') result = 'Đáp án A';
+      else if (body[0] === 'B') result = 'Đáp án B';
+      else if (body[0] === 'C') result = 'Đáp án C';
       else {
         let rand = Date.now();
         if (rand % 3 === 0) result = 'Random Đáp án A';
         if (rand % 3 === 1) result = 'Random Đáp án B';
         if (rand % 3 === 2) result = 'Random Đáp án C';
       }
+      // fs.appendFileSync('data.csv', '$[' + question + ']$, $[' + kb + ']$, $[' + body + ']$, $[' + result + ']$, $[' + answer1 + ']$, $[' + answer2 + ']$, $[' + answer3 + ']$');
+      urls = [];
+      kb = '';
+      console.log('Final Time: ', Date.now() - oldTime);
+      console.log('Ranking method result: ', body);
       // Save result to Firestore
       let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
       let setResult = docRef.set({

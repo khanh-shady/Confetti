@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "305767787912",
+    "firebase_url": "https://confetti-faca0.firebaseio.com",
+    "project_id": "confetti-faca0",
+    "storage_bucket": "confetti-faca0.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:305767787912:android:5036f1f44a82293015de3d",
+        "android_client_info": {
+          "package_name": "com.example.confetti"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "305767787912-cqtcuqes1pr5403gdnpeua47sqoijt58.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyaEraIg3ek554TGEOQoXDgLnXT12DlLo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "305767787912-cqtcuqes1pr5403gdnpeua47sqoijt58.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
