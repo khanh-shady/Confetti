@@ -41,7 +41,7 @@ const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
 const SEARCH_RESULT_URL = 'div.g div.rc div.r > a';
 const URL_SANITIZER = /(https:\/\/translate.google.com\/translate\?hl=en&sl=vi&u=)(.*)(&prev=search)/;
-const MAX_REQUEST_SIZE = 6000000;
+const MAX_REQUEST_SIZE = 9000000;
 
 let oldTime = 0;
 
@@ -74,37 +74,17 @@ const crawlOptions = {
 let score1, score2, score3;
 let answerRegex1, answerRegex2, answerRegex3;
 
-app.get('/isShowStarted', (req, res) => {
-  // Query if show is started or not
-  console.log('REQUEST FOR IS SHOW STARTED: ', Date.now());
-  db.collection('clone').get()
-  .then((snapshot) => {
-    snapshot.forEach((doc) => {
-      if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().isShowStarted) {
-        res.end(doc.data().isShowStarted);
-      }
-    });
-    res.end('false');
-  }).catch((err) => {
-    console.log('Error getting documents', err);
-  });
+app.get('/sendA', (req, res) => {
+  pushNotification('0', 'Đáp án A');
 });
 
-app.get('/result', (req, res) => {
-  // Query for result
-  console.log('REQUEST FOR RESULT: ', Date.now());
-  db.collection('clone').get()
-  .then((snapshot) => {
-    snapshot.forEach((doc) => {
-      if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().result.length > 0) {
-        res.end("Câu " + doc.data().questionNumber + " : " + doc.data().result);
-      }
-    });
-    res.end('Not yet!');
-  }).catch((err) => {
-    console.log('Error getting documents', err);
-  });
-})
+app.get('/sendB', (req, res) => {
+  pushNotification('0', 'Đáp án B');
+});
+
+app.get('/sendC', (req, res) => {
+  pushNotification('0', 'Đáp án C');
+});
 
 app.post('/old', (req, res) => {
   console.log('OLD METHOD: ', Date.now());
@@ -114,7 +94,7 @@ app.post('/old', (req, res) => {
   // Save question to firestore
   let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
   let setQuestion = docRef.set({
-    isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
+    question, answer1, answer2, answer3, result: '', questionNumber
   });
 
   console.log("Question: ", question);
@@ -176,7 +156,6 @@ app.post('/old', (req, res) => {
         answer1: '',
         answer2: '',
         answer3: '',
-        isShowStarted: 'true',
         result: resultInLetter,
         questionNumber
       });
@@ -193,7 +172,6 @@ app.post('/old', (req, res) => {
         answer1: '',
         answer2: '',
         answer3: '',
-        isShowStarted: 'true',
         result: resultInLetter,
         questionNumber
       });
@@ -221,7 +199,7 @@ app.post('/ranking', (req, res) => {
   // Save question to firestore
   let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
   let setQuestion = docRef.set({
-    isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
+    question, answer1, answer2, answer3, result: '', questionNumber
   });
   console.log('Save to Firestore: ', Date.now() - oldTime);
 
@@ -301,7 +279,8 @@ function makeTestRequest(query) {
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
   for (const url of urls) {
-    promises.push(Promise.race([new Promise((resolve, reject) => {
+    promises.push(new Promise((resolve, reject) => {
+      crawlOptions.timeout = 5000;
       crawlOptions.url = encodeURI(url);
       request(crawlOptions, (error, response, body) => {
         if (error) {
@@ -312,17 +291,13 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
           const s = $.text();
           if (Buffer.byteLength(s) + Buffer.byteLength(kb) >= MAX_REQUEST_SIZE) {
             console.log('Exceed limit: ', Buffer.byteLength(s) + Buffer.byteLength(kb) + ' bytes', Date.now() - oldTime);
-            resolve(true);
+          } else {
+            kb += s;
           }
-          kb += s;
         }
         resolve(true);
       });
-    }), new Promise(((resolve, reject) => {
-      setTimeout(() => {
-        resolve(true);
-      }, 5000);
-    }))]));
+    }));
   }
   Promise.all(promises).then(() => {
     console.log('Time: ', Date.now() - oldTime);
@@ -338,7 +313,6 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
     params = JSON.stringify(params);
     crawlOptions.body = params;
     crawlOptions.encoding = 'utf8';
-    crawlOptions.timeout = 5000;
     crawlOptions.url = 'https://us-central1-confetti-faca0.cloudfunctions.net/ranking';
     request.post(crawlOptions, (error, resp, body) => {
       if (body[0] === 'A') result = 'Đáp án A';
@@ -362,7 +336,6 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
         answer1: '',
         answer2: '',
         answer3: '',
-        isShowStarted: 'true',
         result,
         questionNumber: questionNo
       });
