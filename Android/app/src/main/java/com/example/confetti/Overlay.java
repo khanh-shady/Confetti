@@ -1,12 +1,16 @@
 package com.example.confetti;
 
+import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Build;
-import android.os.Handler;
+import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -19,11 +23,16 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.Calendar;
+import androidx.core.app.ActivityCompat;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
 
 public class Overlay extends AccessibilityService {
 
-    private Handler mHandler;
     private WindowManager mWindowManager;
     private View mOverlay;
     private TextView questionTV;
@@ -34,17 +43,20 @@ public class Overlay extends AccessibilityService {
     private final String RANKING = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/ranking";
     private final String OLD = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/old";
     private String HOST = RANKING;
-    private final String CLONE_IS_SHOW_STARTED = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/isShowStarted";
-    private final String CLONE_RESULT = "https://asia-east2-confetti-faca0.cloudfunctions.net/question/result";
-
-    public static boolean isShowStarted = false;
-    public static int TIMER = 5000;
-
     public static int posX = 100, posY = 0;
 
-    public static String lastQuestionNumber = "", questionNumber = "";
+    private int mDebugDepth = 0;
+    private boolean isNodeLogTurnedOn = false;
+    public static boolean isCloneGotResult = false;
+    public static String cloneResult = "";
+    public static String lastQuestionNumber = "0", questionNumber = "";
     private String question = "", answer1 = "", answer2 = "", answer3 = "";
     private boolean isNextQuestion = false, isNextAnswer1 = false, isNextAnswer2 = false, isNextAnswer3 = false;
+
+    private String deviceIMEI;
+    private final String[] IMEI_MAIN_DEVICES = {"354556102461723", "354652107360810"};
+    private final String[] WORDS_TO_AVOID = {"Share", "Comment", "Like", "Playing for Fun", "Friends", "Get Free Lives", "Rewards", "Correct",
+    "In the Running", "Free Lives", "You", "All Players in the Running"};
 
     @Override
     protected void onServiceConnected() {
@@ -52,51 +64,83 @@ public class Overlay extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (!MainActivity.isMainDevice && isCloneGotResult) {
+            isCloneGotResult = false;
+            resultTV.setText(cloneResult);
+        }
         AccessibilityNodeInfo mNodeInfo = event.getSource();
-        AccessibilityNodeInfo parentNode = getParentNode(mNodeInfo);
-        if (parentNode != null) {
-            for (int i = 0; i < parentNode.getChildCount(); i++) {
-                if (parentNode.getChild(i).getText() != null) {
-                    String text = parentNode.getChild(i).getText().toString();
-                    if (text.matches("Question [0-9]+ of 10")) {
-                        if (!lastQuestionNumber.equals(text.split(" ")[1])) {
-                            questionNumber = text.split(" ")[1];
-                            lastQuestionNumber = questionNumber;
-                            isNextQuestion = true;
-                        }
-                    } else if (isNextQuestion) {
-                        question = text;
-                        isNextQuestion = false;
-                        isNextAnswer1 = true;
-                    }
-                } else if (parentNode.getChild(i).getChildCount() == 1) {
-                    if (isNextAnswer1) {
-                        answer1 = parentNode.getChild(i).getChild(0).getText().toString();
-                        isNextAnswer1 = false;
-                        isNextAnswer2 = true;
-                    } else if (isNextAnswer2) {
-                        answer2 = parentNode.getChild(i).getChild(0).getText().toString();
-                        isNextAnswer2 = false;
-                        isNextAnswer3 = true;
-                    } else if (isNextAnswer3) {
-                        answer3 = parentNode.getChild(i).getChild(0).getText().toString();
-                        isNextAnswer3 = false;
-                        if (questionTV != null)
-                            questionTV.setText(questionNumber + ": " + question + "\nAnswer1: " + answer1 + "\nAnswer2: " + answer2 + "\nAnswer3: " + answer3);
-                        if (MainActivity.isMainDevice) {
-                            new CallAPI().execute(HOST, question, answer1, answer2, answer3, questionNumber);
-                        }
-                    }
-                }
+        getQuestion(mNodeInfo);
+    }
+
+    private void writeToFile(String data, Context context) {
+        File path = context.getExternalFilesDir(null);
+        Log.d(TAG, path.getAbsolutePath());
+        File file = new File(path, "log.txt");
+        FileOutputStream stream = null;
+        try {
+            stream = new FileOutputStream(file, true);
+            stream.write(data.getBytes());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            Log.e("Exception", "File write failed: " + e.toString());
+        } finally {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
 
-    private AccessibilityNodeInfo getParentNode(AccessibilityNodeInfo mNodeInfo) {
-        if (mNodeInfo != null && mNodeInfo.getText() != null && mNodeInfo.getText().toString().matches("Question [0-9]+ of 10")) {
-            return mNodeInfo.getParent();
+    private void getQuestion(AccessibilityNodeInfo mNodeInfo) {
+        if (mNodeInfo == null) return;
+        String log ="";
+        for (int i = 0; i < mDebugDepth; i++) {
+            log += ".";
         }
-        return null;
+        if (isNodeLogTurnedOn && mNodeInfo.getText() != null) {
+            writeToFile(mNodeInfo.getText().toString(), this);
+        }
+        if (mNodeInfo.getText() != null) {
+            String text = mNodeInfo.getText().toString();
+            if (text.matches("Question [0-9]+ of 10")) {
+                if (Integer.parseInt(lastQuestionNumber) < Integer.parseInt(text.split(" ")[1])) {
+                    questionNumber = text.split(" ")[1];
+                    lastQuestionNumber = questionNumber;
+                    isNextQuestion = true;
+                }
+            } else if (isNextQuestion && text.contains("?") && !text.equals(text.toUpperCase())) {
+                question = text;
+                isNextQuestion = false;
+                isNextAnswer1 = true;
+            } else if (isNextAnswer1 && !text.equals(text.toUpperCase()) && !text.equals("10") && !text.equals(question) && !text.equals("9")
+                    && !Arrays.asList(WORDS_TO_AVOID).contains(text) && !text.contains("to earn a free life") && !text.equals("8")
+                    && !text.contains("Players in the Running") && !text.contains("of 10") && !text.contains("TODAY'S PRIZE:")) {
+                answer1 = text;
+                isNextAnswer1 = false;
+                isNextAnswer2 = true;
+            } else if (isNextAnswer2) {
+                answer2 = text;
+                isNextAnswer2 = false;
+                isNextAnswer3 = true;
+            } else if (isNextAnswer3) {
+                answer3 = text;
+                isNextAnswer3 = false;
+                if (questionTV != null)
+                    questionTV.setText(questionNumber + ": " + question + "\nAnswer1: " + answer1 + "\nAnswer2: " + answer2 + "\nAnswer3: " + answer3);
+                if (MainActivity.isMainDevice) {
+                    new CallAPI().execute(HOST, question, answer1, answer2, answer3, questionNumber);
+                }
+            }
+        }
+        if (mNodeInfo.getChildCount() < 1) return;
+        mDebugDepth++;
+
+        for (int i = 0; i < mNodeInfo.getChildCount(); i++) {
+            getQuestion(mNodeInfo.getChild(i));
+        }
+        mDebugDepth--;
     }
 
     @Override
@@ -107,6 +151,15 @@ public class Overlay extends AccessibilityService {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        questionNumber = "0";
+        lastQuestionNumber = "0";
+        deviceIMEI = getDeviceIMEI(this);
+        if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
+            MainActivity.isMainDevice = true;
+        } else {
+            MainActivity.isMainDevice = false;
+        }
         mOverlay = LayoutInflater.from(this).inflate(R.layout.layout_overlay, null);
 
         int LAYOUT_FLAG;
@@ -148,7 +201,6 @@ public class Overlay extends AccessibilityService {
         screenshotButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //enable do OCR
                 HOST = RANKING;
             }
         });
@@ -156,29 +208,24 @@ public class Overlay extends AccessibilityService {
         rankingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //enable do OCR
                 HOST = OLD;
+            }
+        });
+        final ImageView logButton = (ImageView) mOverlay.findViewById(R.id.log_btn);
+        logButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isNodeLogTurnedOn = !isNodeLogTurnedOn;
+                if (isNodeLogTurnedOn) {
+                    logButton.setBackgroundColor(Color.WHITE);
+                } else {
+                    logButton.setBackgroundColor(Color.BLACK);
+                }
             }
         });
         //Add the view to the window
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mWindowManager.addView(mOverlay, params);
-
-        Log.d(TAG, "IS MAIN DEVICE: " + MainActivity.isMainDevice);
-        if (!MainActivity.isMainDevice) {
-            mHandler = new Handler();
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (!isShowStarted && isTimeForConfetti()) {
-                        new CallAPIClone().execute(CLONE_IS_SHOW_STARTED);
-                    } else if (isShowStarted && isTimeForConfetti()) {
-                        new CallAPIClone().execute(CLONE_RESULT);
-                    }
-                    mHandler.postDelayed(this, TIMER);
-                }
-            }, TIMER);
-        }
     }
 
     @Override
@@ -206,12 +253,22 @@ public class Overlay extends AccessibilityService {
         dispatchGesture(createClick(x, y), null, null);
     }
 
-    private boolean isTimeForConfetti() {
-        int currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY); //Current hour
-        int currentMinute = Calendar.getInstance().get(Calendar.MINUTE); //Current minute
-        if (currentHour == 21 && currentMinute > 15 && currentMinute < 40) {
-            return true;
+    private String getDeviceIMEI(Context context) {
+        try {
+            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                return null;
+            }
+            String imei = telephonyManager.getDeviceId();
+            if (imei != null && !imei.isEmpty()) {
+                return imei;
+            } else {
+                return android.os.Build.SERIAL;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return false;
+        return null;
     }
+
 }

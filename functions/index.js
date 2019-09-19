@@ -29,7 +29,7 @@ const { getName } = require('./country-list.js');
 
 // Create a new instance of express
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5050;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -55,6 +55,61 @@ function pushNotification(questionNo, result) {
   });
 }
 
+process.setUncaughtExceptionCaptureCallback(function (error) {
+  console.trace(error);
+});
+
+app.get('/readFile', (req, res) => {
+  console.log("JFIOQJ#IORJ *(#UR (*#*(EIOFJHO  ");
+  const lines = require('fs').readFileSync('question', 'utf-8')
+    .split('\n')
+    .filter(Boolean);
+  const lineAnswers = require('fs').readFileSync('answer', 'utf-8')
+    .split('\n')
+    .filter(Boolean);
+  let id = 0;
+  writeToFile(id, res, lines, lineAnswers);
+});
+
+let paramsW;
+function writeToFile(id, res, lines, lineAnswers) {
+  let lineAnswer = 0;    
+  const question = lines[id].match(/(?<=((Question: )|(Câu hỏi: )))[\s\S]*?(?=1:)/)[0].trim();
+  const answer1 = lines[id].match(/(?<=(1: ))[\s\S]*?(?=2:)/)[0].trim();
+  const answer2 = lines[id].match(/(?<=(2: ))[\s\S]*?(?=3:)/)[0].trim();
+  const answer3 = lines[id].match(/(?<=(3: ))[\s\S]*/)[0].trim();
+  for (const answer of lineAnswers) {
+    if (id === lineAnswer) {
+      paramsW = {
+        'question': question,
+        'answer1': answer1,
+        'answer2': answer2,
+        'answer3': answer3
+      }
+      paramsW = JSON.stringify(paramsW);
+      dataOptions.body = paramsW;
+      dataOptions.headers = { 'Content-Type': 'application/json' };
+      dataOptions.url = 'http://localhost:5050/ranking';
+      request.post(dataOptions, (error, resp, body) => {
+        console.log(id + ',' + question + ',' + answer1 + ',' + answer2 + ',' + answer3 + ',' + answer);
+        require('fs').appendFileSync("data.csv", id + ',' + question + ',' + answer1 + ',' + answer2 + ',' + answer3 + ',' + answer + ',' + body + '\n', err => {
+          if (error) {
+              return console.log(error);
+          }
+        });
+        if (id === lines.length - 1) {
+          res.end('DONE!');
+        }
+        id++;
+        setTimeout(() => {
+          writeToFile(id, res, lines, lineAnswers);
+        }, Math.random() * 20000);
+      });        
+    }
+    lineAnswer++;
+  }
+}
+
 const GoogleOptions = {
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
@@ -70,25 +125,14 @@ const crawlOptions = {
   gzip: true,
   timeout: 2000
 };
+const dataOptions = {
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
+  },
+};
 
 let score1, score2, score3;
 let answerRegex1, answerRegex2, answerRegex3;
-
-app.get('/isShowStarted', (req, res) => {
-  // Query if show is started or not
-  console.log('REQUEST FOR IS SHOW STARTED: ', Date.now());
-  db.collection('clone').get()
-  .then((snapshot) => {
-    snapshot.forEach((doc) => {
-      if (doc.id === '3aEKZ4sLpAnP49tR3UqS' && doc.data().isShowStarted) {
-        res.end(doc.data().isShowStarted);
-      }
-    });
-    res.end('false');
-  }).catch((err) => {
-    console.log('Error getting documents', err);
-  });
-});
 
 app.get('/result', (req, res) => {
   // Query for result
@@ -211,27 +255,27 @@ let urls = [];
 let kb = '';
 let questionNo;
 app.post('/ranking', (req, res) => {
-  console.log('RANKING METHOD: ', Date.now() - oldTime);
-  let { question, answer1, answer2, answer3, questionNumber } = req.body;
-  questionNo = questionNumber;
+  kb = '';
+  // console.log('RANKING METHOD: ', Date.now() - oldTime);
+  let { question, answer1, answer2, answer3 } = req.body;
   console.log("Question: ", question);
   console.log("Answer1: ", answer1);
   console.log("Answer2: ", answer2);
   console.log("Answer3: ", answer3);
   // Save question to firestore
-  let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
-  let setQuestion = docRef.set({
-    isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
-  });
-  console.log('Save to Firestore: ', Date.now() - oldTime);
+  // let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+  // let setQuestion = docRef.set({
+  //   isShowStarted: 'true', question, answer1, answer2, answer3, result: '', questionNumber
+  // });
+  // console.log('Save to Firestore: ', Date.now() - oldTime);
 
   // Sanitize country names in answers
-  const santizedAnswer1 = getName(answer1);
-  const santizedAnswer2 = getName(answer2);
-  const santizedAnswer3 = getName(answer3);
-  if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
-  if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
-  if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
+  // const santizedAnswer1 = getName(answer1);
+  // const santizedAnswer2 = getName(answer2);
+  // const santizedAnswer3 = getName(answer3);
+  // if (santizedAnswer1 && santizedAnswer1.length > 0) answer1 = santizedAnswer1;
+  // if (santizedAnswer2 && santizedAnswer2.length > 0) answer2 = santizedAnswer2;
+  // if (santizedAnswer3 && santizedAnswer3.length > 0) answer3 = santizedAnswer3;
   /*
     Make 4 queries
     1. Only the question
@@ -301,7 +345,8 @@ function makeTestRequest(query) {
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
   for (const url of urls) {
-    promises.push(Promise.race([new Promise((resolve, reject) => {
+    promises.push(new Promise((resolve, reject) => {
+      crawlOptions.timeout = 5000;
       crawlOptions.url = encodeURI(url);
       request(crawlOptions, (error, response, body) => {
         if (error) {
@@ -312,19 +357,23 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
           const s = $.text();
           if (Buffer.byteLength(s) + Buffer.byteLength(kb) >= MAX_REQUEST_SIZE) {
             console.log('Exceed limit: ', Buffer.byteLength(s) + Buffer.byteLength(kb) + ' bytes', Date.now() - oldTime);
-            resolve(true);
+          } else {
+            kb += s;
+            console.log('Current kb: ' , Buffer.byteLength(kb));
           }
-          kb += s;
         }
         resolve(true);
       });
-    }), new Promise(((resolve, reject) => {
-      setTimeout(() => {
-        resolve(true);
-      }, 5000);
-    }))]));
+    }));
   }
   Promise.all(promises).then(() => {
+    if (Buffer.byteLength(kb) > 1000) {
+      require('fs').appendFileSync("crawl.txt", kb + '@#$%', err => {
+        if (error) {
+            return console.log(error);
+        }
+      });
+    }
     console.log('Time: ', Date.now() - oldTime);
     console.log('---------------------------------- URL LENGTH: ', urls.length);
     console.log(Buffer.byteLength(kb) + ' bytes');
@@ -338,36 +387,35 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
     params = JSON.stringify(params);
     crawlOptions.body = params;
     crawlOptions.encoding = 'utf8';
-    crawlOptions.timeout = 5000;
-    crawlOptions.url = 'https://us-central1-confetti-faca0.cloudfunctions.net/ranking';
+    crawlOptions.url = 'https://us-central1-confetti-faca0.cloudfunctions.net/rankingTraining';
     request.post(crawlOptions, (error, resp, body) => {
-      if (body[0] === 'A') result = 'Đáp án A';
-      else if (body[0] === 'B') result = 'Đáp án B';
-      else if (body[0] === 'C') result = 'Đáp án C';
-      else {
-        let rand = Date.now();
-        if (rand % 3 === 0) result = 'Random Đáp án A';
-        if (rand % 3 === 1) result = 'Random Đáp án B';
-        if (rand % 3 === 2) result = 'Random Đáp án C';
-      }
+      // if (body[0] === 'A') result = 'Đáp án A';
+      // else if (body[0] === 'B') result = 'Đáp án B';
+      // else if (body[0] === 'C') result = 'Đáp án C';
+      // else {
+      //   let rand = Date.now();
+      //   if (rand % 3 === 0) result = 'Random Đáp án A';
+      //   if (rand % 3 === 1) result = 'Random Đáp án B';
+      //   if (rand % 3 === 2) result = 'Random Đáp án C';
+      // }
       // fs.appendFileSync('data.csv', '$[' + question + ']$, $[' + kb + ']$, $[' + body + ']$, $[' + result + ']$, $[' + answer1 + ']$, $[' + answer2 + ']$, $[' + answer3 + ']$');
       urls = [];
       kb = '';
       console.log('Final Time: ', Date.now() - oldTime);
-      console.log('Ranking method result: ', body);
+      // console.log('Ranking method result: ', body);
       // Save result to Firestore
-      let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
-      let setResult = docRef.set({
-        question: '',
-        answer1: '',
-        answer2: '',
-        answer3: '',
-        isShowStarted: 'true',
-        result,
-        questionNumber: questionNo
-      });
-      pushNotification(questionNo, result);
-      res.end(result);
+      // let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+      // let setResult = docRef.set({
+      //   question: '',
+      //   answer1: '',
+      //   answer2: '',
+      //   answer3: '',
+      //   isShowStarted: 'true',
+      //   result,
+      //   questionNumber: questionNo
+      // });
+      // pushNotification(questionNo, result);
+      res.end(body);
     });
   });
 }

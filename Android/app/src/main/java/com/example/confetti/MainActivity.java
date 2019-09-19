@@ -11,10 +11,16 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.WindowManager;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.Arrays;
 
@@ -46,6 +52,17 @@ public class MainActivity extends AppCompatActivity {
         } else {
             isMainDevice = false;
         }
+        FirebaseMessaging.getInstance().subscribeToTopic("result")
+                .addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (!task.isSuccessful()) {
+                            Log.d("UNSUCCESSFUL", "FUCK DUDE");
+                        } else {
+                            Log.d("SUBSCRIBED", "Subscribed to result");
+                        }
+                    }
+                });
     }
 
     @Override
@@ -116,6 +133,17 @@ public class MainActivity extends AppCompatActivity {
         Point size = new Point();
         wm.getDefaultDisplay().getRealSize(size);
         int height = size.y;
+        /*
+        * with navigation bottom bar
+        * posA : 0.76
+        * posB : 0.85
+        * posC : 0.9
+        *
+        * without
+        * posA : 0.79
+        * posB : 0.88
+        * posC : 0.93
+        * */
         posA = (int) (height * 0.76);
         posB =  (int) (height * 0.85);
         posC = (int) (height * 0.9);
