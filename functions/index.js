@@ -1,3 +1,4 @@
+/* eslint-disable prefer-promise-reject-errors */
 /* eslint-disable promise/catch-or-return */
 /* eslint-disable promise/always-return */
 /* eslint-disable no-loop-func */
@@ -41,7 +42,7 @@ const NEWS_SNIPPET_SELECOTR = 'div.rSr7Wd';
 const PARENT_ELEMENT_SELECTOR = '#main';
 const SEARCH_RESULT_URL = 'div.g div.rc div.r > a';
 const URL_SANITIZER = /(https:\/\/translate.google.com\/translate\?hl=en&sl=vi&u=)(.*)(&prev=search)/;
-const MAX_REQUEST_SIZE = 9000000;
+const MAX_REQUEST_SIZE = 7000000;
 
 let oldTime = 0;
 
@@ -68,7 +69,7 @@ const crawlOptions = {
   },
   encoding: null,
   gzip: true,
-  timeout: 2000
+  timeout: 2500
 };
 
 let score1, score2, score3;
@@ -197,10 +198,10 @@ app.post('/ranking', (req, res) => {
   console.log("Answer2: ", answer2);
   console.log("Answer3: ", answer3);
   // Save question to firestore
-  let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
-  let setQuestion = docRef.set({
-    question, answer1, answer2, answer3, result: '', questionNumber
-  });
+  // let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+  // let setQuestion = docRef.set({
+  //   question, answer1, answer2, answer3, result: '', questionNumber
+  // });
   console.log('Save to Firestore: ', Date.now() - oldTime);
 
   // Sanitize country names in answers
@@ -258,14 +259,14 @@ function makeTestRequest(query) {
       if (error) {
         console.log(error);
       } else {
-        if (body) {
+        if (body && urls.length < 30) {
           const $ = cheerio.load(body);
           $(SEARCH_RESULT_URL, PARENT_ELEMENT_SELECTOR).each((index, element) => {
             let url = $(element).attr('href');
-            if (url.match(URL_SANITIZER)) {
+            if (url.match(URL_SANITIZER) && urls.length < 30) {
               url = url.match(URL_SANITIZER)[2];
             }
-            if (!urls.includes(url)) {
+            if (!urls.includes(url) && urls.length < 30) {
               urls.push(url);
             }
           });
@@ -276,32 +277,54 @@ function makeTestRequest(query) {
   });
 }
 
+let urlCrawled = 0;
 function makeCrawlRequest(res, question, answer1, answer2, answer3) {
   let promises = [];
   for (const url of urls) {
+    let isResolved = false;
     promises.push(new Promise((resolve, reject) => {
-      crawlOptions.timeout = 5000;
+      let time = setTimeout(() => {
+        console.log('Connection time out');
+        isResolved = true;
+        resolve(true);
+        return;
+      }, 2500);
       crawlOptions.url = encodeURI(url);
       request(crawlOptions, (error, response, body) => {
+        clearTimeout(time);
         if (error) {
           console.log(error);
         }
+        let timeout = setTimeout(() => {
+          console.log('Time out cmnr');
+          isResolved = true;
+          if (!isResolved) {
+            resolve(true);
+          }
+          return;
+        }, 2000);
         if (body) {
           const $ = cheerio.load(body);
           const s = $.text();
           if (Buffer.byteLength(s) + Buffer.byteLength(kb) >= MAX_REQUEST_SIZE) {
             console.log('Exceed limit: ', Buffer.byteLength(s) + Buffer.byteLength(kb) + ' bytes', Date.now() - oldTime);
-          } else {
+          } else if (!isResolved) {
             kb += s;
+            urlCrawled++;
           }
         }
-        resolve(true);
+        clearTimeout(timeout);
+        if (!isResolved) {
+          resolve(true);
+        }
       });
     }));
   }
   Promise.all(promises).then(() => {
     console.log('Time: ', Date.now() - oldTime);
     console.log('---------------------------------- URL LENGTH: ', urls.length);
+    console.log('URL CRAWLED: ', urlCrawled);
+    urlCrawled = 0;
     console.log(Buffer.byteLength(kb) + ' bytes');
     params = {
       'question': question,
@@ -312,33 +335,35 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
     }
     params = JSON.stringify(params);
     crawlOptions.body = params;
+    crawlOptions.timeout = 5000;
     crawlOptions.encoding = 'utf8';
-    crawlOptions.url = 'https://us-central1-confetti-faca0.cloudfunctions.net/ranking';
+    crawlOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
     request.post(crawlOptions, (error, resp, body) => {
-      if (body[0] === 'A') result = 'Đáp án A';
-      else if (body[0] === 'B') result = 'Đáp án B';
-      else if (body[0] === 'C') result = 'Đáp án C';
-      else {
+      console.log(body);
+      if (!body || body === '???') { 
         let rand = Date.now();
         if (rand % 3 === 0) result = 'Random Đáp án A';
         if (rand % 3 === 1) result = 'Random Đáp án B';
         if (rand % 3 === 2) result = 'Random Đáp án C';
       }
+      else if (body[0] === 'A') result = 'Đáp án A';
+      else if (body[0] === 'B') result = 'Đáp án B';
+      else if (body[0] === 'C') result = 'Đáp án C';
       // fs.appendFileSync('data.csv', '$[' + question + ']$, $[' + kb + ']$, $[' + body + ']$, $[' + result + ']$, $[' + answer1 + ']$, $[' + answer2 + ']$, $[' + answer3 + ']$');
       urls = [];
       kb = '';
       console.log('Final Time: ', Date.now() - oldTime);
       console.log('Ranking method result: ', body);
       // Save result to Firestore
-      let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
-      let setResult = docRef.set({
-        question: '',
-        answer1: '',
-        answer2: '',
-        answer3: '',
-        result,
-        questionNumber: questionNo
-      });
+      // let docRef = db.collection('clone').doc('3aEKZ4sLpAnP49tR3UqS');
+      // let setResult = docRef.set({
+      //   question: '',
+      //   answer1: '',
+      //   answer2: '',
+      //   answer3: '',
+      //   result,
+      //   questionNumber: questionNo
+      // });
       pushNotification(questionNo, result);
       res.end(result);
     });
