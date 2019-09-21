@@ -331,13 +331,13 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       'firstChoice': answer1,
       'secondChoice': answer2,
       'thirdChoice': answer3,
-      'kb': [kb]
+      'kb': kb
     }
     params = JSON.stringify(params);
     crawlOptions.body = params;
     crawlOptions.timeout = 5000;
     crawlOptions.encoding = 'utf8';
-    crawlOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/ranking';
+    crawlOptions.url = 'https://asia-east2-confetti-faca0.cloudfunctions.net/bimRanking';
     request.post(crawlOptions, (error, resp, body) => {
       console.log(body);
       if (!body || body === '???') { 
@@ -349,6 +349,7 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       else if (body[0] === 'A') result = 'Đáp án A';
       else if (body[0] === 'B') result = 'Đáp án B';
       else if (body[0] === 'C') result = 'Đáp án C';
+      pushNotification(questionNo, result);
       // fs.appendFileSync('data.csv', '$[' + question + ']$, $[' + kb + ']$, $[' + body + ']$, $[' + result + ']$, $[' + answer1 + ']$, $[' + answer2 + ']$, $[' + answer3 + ']$');
       urls = [];
       kb = '';
@@ -364,7 +365,6 @@ function makeCrawlRequest(res, question, answer1, answer2, answer3) {
       //   result,
       //   questionNumber: questionNo
       // });
-      pushNotification(questionNo, result);
       res.end(result);
     });
   });
