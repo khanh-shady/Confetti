@@ -73,8 +73,8 @@ function writeToFile(id, res, lines) {
   const question = lines[id].match(/(?<=((Question: )|(Câu hỏi: )))[\s\S]*?(?=1:)/)[0].trim();
   const answer1 = lines[id].match(/(?<=(1: ))[\s\S]*?(?=2:)/)[0].trim();
   const answer2 = lines[id].match(/(?<=(2: ))[\s\S]*?(?=3:)/)[0].trim();
-  const answer3 = lines[id].match(/(?<=(3: ))[\s\S]*/)[0].trim();
-  const result = lines[id].match(/(?<=(Đáp án: ))[\s\S]*?\n/)[0].trim();
+  const answer3 = lines[id].match(/(?<=(3: ))[\s\S]*?(?=(Đáp án: ))/)[0].trim();
+  const result = lines[id].match(/(?<=(Đáp án: ))[\s\S]*/)[0].trim();
   paramsW = {
     'question': question,
     'answer1': answer1,

@@ -56,7 +56,8 @@ public class Overlay extends AccessibilityService {
     private String deviceIMEI;
     private final String[] IMEI_MAIN_DEVICES = {"354556102461723", "354652107360810"};
     private final String[] WORDS_TO_AVOID = {"Share", "Comment", "Like", "Playing for Fun", "Friends", "Get Free Lives", "Rewards", "Correct",
-    "In the Running", "Free Lives", "You", "All Players in the Running"};
+    "In the Running", "Free Lives", "You", "All Players in the Running", "FOLLOWING", "LIVE", "Recorded Live", "Previously Recorded",
+    "The prize is no longer available.", "Time's up!"};
 
     @Override
     protected void onServiceConnected() {
@@ -114,7 +115,7 @@ public class Overlay extends AccessibilityService {
                 question = text;
                 isNextQuestion = false;
                 isNextAnswer1 = true;
-            } else if (isNextAnswer1 && !text.equals(text.toUpperCase()) && !text.equals("10") && !text.equals(question) && !text.equals("9")
+            } else if (isNextAnswer1 && !text.equals("10") && !text.equals(question) && !text.equals("9")
                     && !Arrays.asList(WORDS_TO_AVOID).contains(text) && !text.contains("to earn a free life") && !text.equals("8")
                     && !text.contains("Players in the Running") && !text.contains("of 10") && !text.contains("TODAY'S PRIZE:")) {
                 answer1 = text;
