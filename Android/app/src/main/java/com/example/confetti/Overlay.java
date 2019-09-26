@@ -57,31 +57,27 @@ public class Overlay extends AccessibilityService {
     private boolean isNodeLogTurnedOn = false;
     public static boolean isCloneGotResult = false;
     public static String cloneResult = "";
-    public static String lastQuestionNumber = "0", questionNumber = "";
+    public static String questionNumber = "";
     private String question = "", answer1 = "", answer2 = "", answer3 = "";
-    private boolean isNextQuestion = false, isNextAnswer1 = false, isNextAnswer2 = false, isNextAnswer3 = false;
-    private String lastText1 = "", lastText2 = "", lastText3 = "", lastText4 = "", questionTVText = "";
+    private String lastText1 = "", lastText2 = "", lastText3 = "", lastText4 = "", lastText5 = "", questionTVText = "";
 
     private String deviceIMEI;
     private final String[] IMEI_MAIN_DEVICES = {"354556102461723", "354652107360810"};
-    private final String[] WORDS_TO_AVOID = {"Share", "Comment", "Like", "Playing for Fun", "Friends", "Get Free Lives", "Rewards", "Correct",
-    "In the Running", "Free Lives", "You", "All Players in the Running", "FOLLOWING", "LIVE", "Recorded Live", "Previously Recorded",
-    "The prize is no longer available.", "Time's up!", "Play 5 games to earn a free life"};
 
     private Hashtable<String, String> hash = new Hashtable<>();
     private String[] stopWords = {"ai","alô","amen","bao","bèn","béng","bên","bông","bấy","bển","bệt","bị","bỏ","bỗng","bộ","bớ","bởi",
-            "bức","chiếc","choa","chung","chuyển","chuyện","chuẩn","chăng","chơi","chưa","chậc","chắc","chỉ","chỉn","chịu","chốc","chớ",
+            "bức","cần","chiếc","choa","chung","chuyển","chuyện","chuẩn","chăng","chơi","chưa","chậc","chắc","chỉ","chỉn","chịu","chốc","chớ",
             "chợt","chủn","chứ","cuộc","càng","các","cách","cái","còn","có","cùng","cũng","cơn","cả","của","cứ","do","duy","dành","dù",
             "dùng","dạ","dẫn","dẫu","gây","gì","ha","hãy","khi","khiến","khoảng","khá","kể","loại","là","làm","lâu","lô","lúc","lượng",
             "lại","lần","lên","mà","mình","mọi","mối","mỗi","mở","nay","ngay","nghen","nghỉm","ngoài","ngoải","ngươi","nhau","nhé","nhiêu",
-            "nhóm","như","nhưng","nhất","nhận","nhằm","nhỉ","nhờ","những","nào","này","nên","nó","nóc","nơi","nấy","nếu","nỗi","nọ","nớ",
+            "nhóm","như","nhưng","nhằm","nhỉ","nhờ","những","nào","này","nên","nó","nóc","nơi","nấy","nếu","nỗi","nọ","nớ",
             "nữa","oái","pho","phè","phía","phóc","phót","phần","phắt","phốc","phụt","phứt","qua","quá","ra","riệt","rày","ráo","rén","rích",
             "rõ","rất","rằng","rồi","rứa","sa sả","sang","so","suýt","sì","sất","sắp","sẽ","sự","thanh","theo","thoạt","thoắt","thuần","thuộc",
             "thà","thêm","thì","thôi","thường","thẩy","thậm","thế","thếch","thỏm","thốc","thốt","thộc","thửa","toẹt","trong","tránh","trả",
             "trển","trệt","trỏng","tuy","tênh","tính","tăng","tại","tạo","tấm","tắp","tọt","tột","tới","từ","từng","tự","veo","việc","và",
             "vài","vào","vâng","vèo","vì","vùng","vượt","vẫn","vậy","về","với","vụt","vừa","xin","xoét","xoẳn","xoẹt","xuể","xuống","xệp",
             "à","ào","á","ái","áng","ít","úi","đang","điểm","đáng","đâu","đây","đã","đó","đưa","đạt","đầy","đặt","đến","đều","để","đủ","ơ",
-            "ơi","ấy","ắt","ồ","ổng","ớ","ờ","ở","ủa","ừ","ử"};
+            "ơi","ấy","ắt","ồ","ổng","ớ","ờ","ở","ủa","ừ","ử","bao nhiêu","sau đây","dưới đây","như sau","là vì","vì sao"};
 
     @Override
     protected void onServiceConnected() {
@@ -127,60 +123,37 @@ public class Overlay extends AccessibilityService {
         if (isNodeLogTurnedOn && mNodeInfo.getText() != null) {
             writeToFile(log + mNodeInfo.getText().toString() + "\n", this);
         }
-        if (mNodeInfo.getText() != null && !mNodeInfo.getText().toString().matches("[-0-9]+:[-0-9]+")
-                && !Arrays.asList(WORDS_TO_AVOID).contains(mNodeInfo.getText().toString())) {
+        if (mNodeInfo.getText() != null) {
             String text = mNodeInfo.getText().toString();
 
-            // Fallback method to get texts
-            if (lastText1 == "") lastText1 = text;
-            else if (lastText2 == "") lastText2 = text;
-            else if (lastText3 == "") lastText3 = text;
-            else if (lastText4 == "") lastText4 = text;
+            if (lastText1.equals("")) lastText1 = text;
+            else if (lastText2.equals("")) lastText2 = text;
+            else if (lastText3.equals("")) lastText3 = text;
+            else if (lastText4.equals("")) lastText4 = text;
+            else if (lastText5.equals("")) lastText5 = text;
             else {
                 lastText1 = lastText2;
                 lastText2 = lastText3;
                 lastText3 = lastText4;
-                lastText4 = text;
+                lastText4 = lastText5;
+                lastText5 = text;
             }
 
             if (text.matches("Question [0-9]+ of 10")) {
-                if (Integer.parseInt(lastQuestionNumber) < Integer.parseInt(text.split(" ")[1]) &&
-                    lastText4.contains("?") && !lastText4.equals(lastText4.toUpperCase()) &&
-                    !Arrays.asList(WORDS_TO_AVOID).contains(lastText1) && !Arrays.asList(WORDS_TO_AVOID).contains(lastText2) &&
-                    !Arrays.asList(WORDS_TO_AVOID).contains(lastText3)) {
+                if (Integer.parseInt(questionNumber) < Integer.parseInt(text.split(" ")[1])) {
+                    questionNumber = text.split(" ")[1];
+                    answer3 = lastText1;
+                    answer2 = lastText2;
+                    answer1 = lastText3;
+                    question = lastText4;
+                    lastText1 = lastText2 = lastText3 = lastText4 = lastText5 = "";
                     if (questionTV != null)
                         questionTV.setText(questionNumber + ": " + question + "\nAnswer1: " + answer1 + "\nAnswer2: " + answer2 + "\nAnswer3: " + answer3);
                     if (MainActivity.isMainDevice && questionTV.getText() != questionTVText) {
                         questionTVText = questionTV.getText().toString();
-                        new CallAPI().execute(HOST, question, answer1, answer2, answer3, questionNumber);
+                        new CallAPI().execute(HOST, question, standardizeQuestion(question), answer1, answer2, answer3, questionNumber);
+
                     }
-                } else if (Integer.parseInt(lastQuestionNumber) < Integer.parseInt(text.split(" ")[1])) {
-                    questionNumber = text.split(" ")[1];
-                    lastQuestionNumber = questionNumber;
-                    isNextQuestion = true;
-                }
-            } else if (isNextQuestion && text.contains("?") && !text.equals(text.toUpperCase())) {
-                question = text;
-                isNextQuestion = false;
-                isNextAnswer1 = true;
-            } else if (isNextAnswer1 && !text.equals("10") && !text.equals(question) && !text.equals("9")
-                    && !Arrays.asList(WORDS_TO_AVOID).contains(text) && !text.contains("to earn a free life") && !text.equals("8")
-                    && !text.contains("Players in the Running") && !text.contains("of 10") && !text.contains("TODAY'S PRIZE:")) {
-                answer1 = text;
-                isNextAnswer1 = false;
-                isNextAnswer2 = true;
-            } else if (isNextAnswer2) {
-                answer2 = text;
-                isNextAnswer2 = false;
-                isNextAnswer3 = true;
-            } else if (isNextAnswer3) {
-                answer3 = text;
-                isNextAnswer3 = false;
-                if (questionTV != null)
-                    questionTV.setText(questionNumber + ": " + question + "\nAnswer1: " + answer1 + "\nAnswer2: " + answer2 + "\nAnswer3: " + answer3);
-                if (MainActivity.isMainDevice && questionTV.getText() != questionTVText) {
-                    questionTVText = questionTV.getText().toString();
-                    new CallAPI().execute(HOST, standardizeQuestion(question), answer1, answer2, answer3, questionNumber);
                 }
             }
         }
@@ -202,10 +175,6 @@ public class Overlay extends AccessibilityService {
     public void onCreate() {
         super.onCreate();
         questionNumber = "0";
-        lastQuestionNumber = "0";
-
-        String a = "Đâu là tên một loài chim?";
-        Log.d("QUESTION AFTED STANDARDIZED: ", standardizeQuestion(a));
 
         deviceIMEI = getDeviceIMEI(this);
         if (Arrays.asList(IMEI_MAIN_DEVICES).contains(deviceIMEI)) {
@@ -316,50 +285,67 @@ public class Overlay extends AccessibilityService {
 
     private String standardizeQuestion(String question) {
         String q = "";
-        Pattern pattern = Pattern.compile("([^\"]+|\"[^\"]+\")+(?=\\?)");
+        List<String> tokens = new ArrayList<>();
+        Pattern pattern = Pattern.compile("[^\"]+|\"[^\"]+\"");
         Matcher matcher = pattern.matcher(question);
         List<String> s = new ArrayList<>();
         while (matcher.find()) {
-            String temp = matcher.group(0).trim();
-            if (temp.length() == 0 || temp.equals("?")) {
+            String match = matcher.group(0).trim();
+            if (match.length() == 0 || match.equals("?")) {
                 continue;
             }
-            s.add(temp);
+            if (match.charAt(match.length() - 1) == '?' && match.charAt(0) != '"') {
+                match = match.substring(0, match.length() - 1);
+            }
+            s.add(match);
         }
         for (int i = 0; i < s.size(); i++) {
+            Log.d("MATCH", s.get(i));
             if (s.get(i).charAt(0) == '"' || (s.get(i).charAt(0) == '?' && s.get(i).length() == 1)) {
-                q += s.get(i) + " ";
+                tokens.add(s.get(i));
                 continue;
             }
             if (hash.get(s.get(i).toLowerCase()) != null) {
-                q += s.get(i) + " ";
+                tokens.add(s.get(i));
                 continue;
             }
             String[] temp = s.get(i).split(" ");
-            System.out.println(Arrays.asList(temp));
-            int tempIndex = 0;
-            while (tempIndex < temp.length - 1) {
-                for (int j = temp.length - 1; j > tempIndex; j--) {
-                    int index = s.get(i).lastIndexOf(temp[j]);
+            while (temp.length > 0 && !temp[0].trim().equals("")) {
+                int oldLength = temp.length;
+                for (int j = temp.length; j >= 0; j--) {
+                    int index;
+                    if (j == temp.length) index = s.get(i).length();
+                    else index = s.get(i).lastIndexOf(temp[j]);
                     if (index > 0) {
                         String word = s.get(i).substring(0, index).trim();
                         if (hash.get(word.toLowerCase()) != null) {
-                            tempIndex = j;
-                            q += word + " ";
+                            String replaceWord = s.get(i).replaceFirst(word, "").trim();
+                            s.set(i, replaceWord);
+                            temp = s.get(i).split(" ");
+                            j = temp.length;
+                            tokens.add(word);
                             break;
                         }
                     }
-                    if (j == tempIndex) {
-                        tempIndex++;
-                        if ((!Arrays.asList(stopWords).contains(temp[j].toLowerCase()) && i == 0 && j == 0)
-                            || !Arrays.asList(stopWords).contains(temp[j])) {
-                            q += temp[j] + " ";
-                        }
-                    }
+                }
+                // Fallback for words not in dictionary
+                if (oldLength == temp.length && !temp[0].trim().equals("")) {
+                    tokens.add(temp[0].trim());
+                    s.set(i, s.get(i).substring(temp[0].trim().length()).trim());
+                    temp = s.get(i).split(" ");
                 }
             }
         }
-        Log.d("QUESTION AFTER STANDARDIZED: ", q);
+        Log.d("TOKENS", "" + tokens);
+        List<String> listStopWords = Arrays.asList(stopWords);
+        for (int i = 0; i < tokens.size(); i++) {
+            if ((!listStopWords.contains(tokens.get(i).toLowerCase())
+                    || (listStopWords.contains(tokens.get(i).toLowerCase()) && i != 0)
+                    || tokens.get(i).charAt(0) == '"') && !listStopWords.contains(tokens.get(i))) {
+                q += tokens.get(i) + " ";
+            }
+        }
+        Log.d("QUESTION AFTER STANDARDIZED", q.trim());
         return q.trim();
     }
 
